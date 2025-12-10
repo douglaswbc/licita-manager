@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Plus, ExternalLink, MoreHorizontal, FileText, Send } from 'lucide-react';
 import { mockService } from '../src/services/mockData';
 import { Bid, BidStatus, Client } from '../types';
-import Modal from '../components/Modal';
+import Modal from '../src/components/Modal';
 import { format, parseISO } from 'date-fns';
 
 const StatusBadge = ({ status }: { status: BidStatus }) => {

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Plus, Trash2, Edit2, Mail, Building } from 'lucide-react';
 import { mockService } from '../src/services/mockData';
 import { Client } from '../types';
-import Modal from '../components/Modal';
+import Modal from '../src/components/Modal';
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
