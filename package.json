@@ -9,13 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "recharts": "^3.5.1",
-    "react": "^19.2.1",
-    "lucide-react": "^0.557.0",
-    "react-router-dom": "^7.10.1",
-    "react-dom": "^19.2.1",
+    "@supabase/supabase-js": "^2.87.1",
     "date-fns": "^4.1.0",
-    "react-hook-form": "^7.68.0"
+    "lucide-react": "^0.557.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-hook-form": "^7.68.0",
+    "react-router-dom": "^7.10.1",
+    "recharts": "^3.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
