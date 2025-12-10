@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Save } from 'lucide-react';
-import { mockService } from '../services/mockData';
+import { mockService } from '../src/services/mockData';
 import { Settings as SettingsType } from '../types';
 
 const Settings: React.FC = () => {

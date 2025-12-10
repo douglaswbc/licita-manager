@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockService } from '../services/mockData';
+import { mockService } from '../src/services/mockData';
 import { Bid, BidStatus } from '../types';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { AlertCircle, TrendingUp, CheckCircle, Clock } from 'lucide-react';

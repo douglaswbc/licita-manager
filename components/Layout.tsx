@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X } from 'lucide-react';
-import { mockService } from '../services/mockData';
+import { mockService } from '../src/services/mockData';
 
 interface LayoutProps {
   children: React.ReactNode;

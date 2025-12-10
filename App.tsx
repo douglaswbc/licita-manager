@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Bids from './pages/Bids';
 import Settings from './pages/Settings';
-import { mockService } from './services/mockData';
+import { mockService } from './src/services/mockData';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuth = mockService.isAuthenticated();

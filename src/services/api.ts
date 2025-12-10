@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Bid, Client, Settings } from '../types';
+import { Bid, Client, Settings } from '../../types';
 
 export const api = {
   // --- AUTH ---

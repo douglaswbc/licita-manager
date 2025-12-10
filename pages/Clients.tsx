@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Trash2, Edit2, Mail, Building } from 'lucide-react';
-import { mockService } from '../services/mockData';
+import { mockService } from '../src/services/mockData';
 import { Client } from '../types';
 import Modal from '../components/Modal';
 

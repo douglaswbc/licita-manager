@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, ExternalLink, MoreHorizontal, FileText, Send } from 'lucide-react';
-import { mockService } from '../services/mockData';
+import { mockService } from '../src/services/mockData';
 import { Bid, BidStatus, Client } from '../types';
 import Modal from '../components/Modal';
 import { format, parseISO } from 'date-fns';
