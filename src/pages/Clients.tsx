@@ -1,20 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Plus, Trash2, Edit2, Mail, Building } from 'lucide-react';
-import { mockService } from '../src/services/mockData';
+import { Plus, Trash2, Edit2, Mail, Building, Loader2 } from 'lucide-react';
+import { api } from '../services/api'; // <--- API Real
 import { Client } from '../types';
-import Modal from '../src/components/Modal';
+import Modal from '../components/Modal'; // <--- Caminho corrigido
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   
   const { register, handleSubmit, reset, setValue } = useForm<Client>();
 
   const loadClients = async () => {
-    const data = await mockService.getClients();
-    setClients(data);
+    try {
+      const data = await api.getClients();
+      setClients(data);
+    } catch (error) {
+      console.error("Erro ao carregar clientes", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -36,18 +43,29 @@ const Clients: React.FC = () => {
   };
 
   const onSubmit = async (data: Client) => {
-    const payload = editingClient ? { ...data, id: editingClient.id } : data;
-    await mockService.saveClient(payload);
-    await loadClients();
-    setIsModalOpen(false);
+    try {
+      const payload = editingClient ? { ...data, id: editingClient.id } : data;
+      await api.saveClient(payload);
+      await loadClients();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao salvar cliente", error);
+      alert("Erro ao salvar cliente.");
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this client?')) {
-      await mockService.deleteClient(id);
-      await loadClients();
+      try {
+        await api.deleteClient(id);
+        await loadClients();
+      } catch (error) {
+        console.error("Erro ao deletar", error);
+      }
     }
   };
+
+  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="space-y-6">

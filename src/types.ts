@@ -3,24 +3,31 @@ export interface Client {
   name: string;
   email: string;
   company: string;
+  access_token?: string;
 }
 
 export enum BidStatus {
-  PENDING = 'Pending',
-  WON = 'Won',
-  LOST = 'Lost'
+  PENDING = 'Pendente',               // Criada, mas ainda não enviada
+  WAITING_CLIENT = 'Aguardando Cliente', // E-mail enviado, esperando resposta
+  WAITING_BID = 'Aguardando Licitação',  // Cliente disse SIM
+  DISCARDED = 'Descartada',           // Cliente disse NÃO
+  WON = 'Ganha',
+  LOST = 'Perdida'
 }
 
 export interface Bid {
   id: string;
   title: string;
-  date: string; // ISO string
+  date: string;
   link_docs: string;
-  status: BidStatus;
+  status: BidStatus; // Agora usa o Enum acima
   client_id: string;
+  client_name?: string;
   reminder_sent: boolean;
   summary_link?: string;
   summary_sent_at?: string;
+  decision?: 'Participar' | 'Descartar' | 'Pendente';
+  decision_at?: string;
 }
 
 export interface Settings {

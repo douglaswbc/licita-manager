@@ -1,96 +1,178 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Save } from 'lucide-react';
-import { mockService } from '../src/services/mockData';
+import { Save, Loader2, Copy, Check } from 'lucide-react'; // Ícones
+import { api } from '../services/api';
 import { Settings as SettingsType } from '../types';
 
-const Settings: React.FC = () => {
-  const { register, handleSubmit, setValue } = useForm<SettingsType>();
+// Componente para copiar variável ao clicar
+const VariableBadge = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    mockService.getSettings().then(data => {
-      Object.entries(data).forEach(([key, value]) => {
-        setValue(key as keyof SettingsType, value);
-      });
-    });
-  }, [setValue]);
-
-  const onSubmit = async (data: SettingsType) => {
-    await mockService.saveSettings(data);
-    alert('Settings saved successfully!');
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text); // Copia para área de transferência
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000); // Reseta após 2s
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <h1 className="text-2xl font-bold text-slate-900">Settings & Templates</h1>
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={`
+        inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono font-medium border transition-all
+        ${copied 
+          ? 'bg-green-100 text-green-700 border-green-200' 
+          : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:border-slate-300'}
+      `}
+      title="Clique para copiar"
+    >
+      {text}
+      {copied ? <Check size={10} /> : <Copy size={10} />}
+    </button>
+  );
+};
+
+const Settings = () => {
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<SettingsType>();
+  const [loading, setLoading] = useState(true);
+
+  // Carregar configurações ao abrir a tela
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await api.getSettings();
+        if (data) {
+          // Espelha o conteúdo do banco nos campos
+          reset(data); 
+        }
+      } catch (error) {
+        console.error("Erro ao carregar configurações:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSettings();
+  }, [reset]);
+
+  const onSubmit = async (data: SettingsType) => {
+    try {
+      await api.saveSettings(data);
+      alert('Configurações salvas com sucesso!');
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao salvar.');
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
+  }
+
+  return (
+    <div className="p-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-800">Configurações de E-mail</h1>
+      </div>
       
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-8">
         
-        {/* General */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">General Configuration</h2>
-          <div className="max-w-md">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Sender Email Address</label>
+        {/* CONFIGURAÇÃO DE REMETENTE */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-slate-800">Remetente</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">E-mail de Envio</label>
             <input 
               {...register('email_sender')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Ex: contato@suaempresa.com"
             />
-             <p className="text-xs text-slate-500 mt-1">This address will appear in the "From" field.</p>
+            <p className="text-xs text-gray-500 mt-1">Este e-mail deve ser do seu domínio verificado ou Gmail (se usar SMTP).</p>
           </div>
         </div>
 
-        {/* Reminder Template */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Automatic Reminder Template</h2>
+        {/* LEMBRETE */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-blue-700">Lembrete Automático</h2>
+              <p className="text-sm text-slate-500">Enviado 2 dias antes do vencimento.</p>
+            </div>
+            <div className="text-right">
+               <span className="text-xs font-semibold text-slate-500 block mb-1">Variáveis (Clique para copiar):</span>
+               <div className="flex gap-2">
+                 <VariableBadge text="{{CLIENTE}}" />
+                 <VariableBadge text="{{LICITACAO}}" />
+                 <VariableBadge text="{{LINK}}" />
+               </div>
+            </div>
+          </div>
+
           <div className="space-y-4">
-             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email Subject</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
               <input 
                 {...register('reminder_subject')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Ex: Lembrete de Licitação Próxima"
               />
             </div>
-             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email Body</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem</label>
               <textarea 
                 {...register('reminder_body')}
                 rows={4}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none font-sans"
               />
-               <p className="text-xs text-slate-500 mt-1">Variables available: {'{title}'}, {'{date}'}, {'{client}'}.</p>
             </div>
           </div>
         </div>
 
-        {/* Summary Template */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Bid Summary Template</h2>
-          <div className="space-y-4">
+        {/* RESUMO */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 border-l-4 border-l-purple-500">
+          <div className="flex justify-between items-start mb-4">
              <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email Subject</label>
+              <h2 className="text-xl font-semibold text-purple-700">Envio de Resumo</h2>
+              <p className="text-sm text-slate-500">Enviado quando você cadastra o link do resumo.</p>
+            </div>
+            <div className="text-right">
+               <span className="text-xs font-semibold text-slate-500 block mb-1">Variáveis (Clique para copiar):</span>
+               <div className="flex gap-2">
+                 <VariableBadge text="{{CLIENTE}}" />
+                 <VariableBadge text="{{LICITACAO}}" />
+                 <VariableBadge text="{{LINK}}" />
+               </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
               <input 
                 {...register('summary_subject')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-purple-500 outline-none"
+                placeholder="Ex: Resumo da Licitação Disponível"
               />
             </div>
-             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email Body</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem</label>
               <textarea 
                 {...register('summary_body')}
                 rows={4}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-purple-500 outline-none font-sans"
               />
-              <p className="text-xs text-slate-500 mt-1">Variables available: {'{title}'}, {'{link}'}.</p>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end">
+        {/* Botão Salvar */}
+        <div className="flex justify-end pt-4">
           <button 
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors font-semibold shadow-sm"
+            type="submit" 
+            disabled={isSubmitting}
+            className="flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors font-medium shadow-lg hover:shadow-xl"
           >
-            <Save size={20} /> Save Settings
+            {isSubmitting ? <Loader2 className="animate-spin size-5" /> : <Save size={20} />}
+            Salvar Alterações
           </button>
         </div>
 

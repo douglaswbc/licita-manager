@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'; // <--- Adicionado Outlet
 import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X } from 'lucide-react';
-import { mockService } from '../services/mockData';
-
-interface LayoutProps {
-  children: React.ReactNode;
-}
+import { api } from '../services/api';
 
 interface SidebarItemProps {
   to: string;
@@ -28,14 +24,20 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon: Icon, label, active
   </Link>
 );
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+// Removemos a prop 'children' e usamos Outlet
+const Layout: React.FC = () => { 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    mockService.logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Erro ao sair", error);
+      navigate('/login');
+    }
   };
 
   const navItems = [
@@ -93,7 +95,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main Content */}
       <main className="flex-1 w-full overflow-y-auto pt-16 md:pt-0">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {children}
+          {/* O Outlet é onde as páginas (Dashboard, Bids, etc) serão desenhadas */}
+          <Outlet />
         </div>
       </main>
       
