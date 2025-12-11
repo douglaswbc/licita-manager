@@ -64,7 +64,7 @@ const Landing: React.FC = () => {
               Começar Agora <ArrowRight size={20} />
             </Link>
             <a 
-              href="https://wa.me/5591992294869" 
+              href="https://wa.me/5591992294869?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20LicitaManager." 
               target="_blank" 
               className="flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-8 py-4 rounded-xl text-lg font-bold transition-all"
             >
