@@ -2,6 +2,7 @@ export interface Profile {
   id: string;
   email: string;
   role: 'admin' | 'user';
+  active: boolean;
   created_at: string;
 }
 
@@ -11,13 +12,18 @@ export interface Client {
   email: string;
   company: string;
   access_token?: string;
+  // Novos campos financeiros
+  contract_value?: number;  // Valor Fixo (R$)
+  commission_rate?: number; // Comissão (%)
+  active?: boolean;
+  created_at?: string;
 }
 
 export enum BidStatus {
-  PENDING = 'Pendente',               // Criada, mas ainda não enviada
-  WAITING_CLIENT = 'Aguardando Cliente', // E-mail enviado, esperando resposta
-  WAITING_BID = 'Aguardando Licitação',  // Cliente disse SIM
-  DISCARDED = 'Descartada',           // Cliente disse NÃO
+  PENDING = 'Pendente',
+  WAITING_CLIENT = 'Aguardando Cliente',
+  WAITING_BID = 'Aguardando Licitação',
+  DISCARDED = 'Descartada',
   WON = 'Ganha',
   LOST = 'Perdida'
 }
@@ -27,7 +33,7 @@ export interface Bid {
   title: string;
   date: string;
   link_docs: string;
-  status: BidStatus; // Agora usa o Enum acima
+  status: BidStatus;
   client_id: string;
   client_name?: string;
   reminder_sent: boolean;
@@ -35,6 +41,9 @@ export interface Bid {
   summary_sent_at?: string;
   decision?: 'Participar' | 'Descartar' | 'Pendente';
   decision_at?: string;
+  final_value?: number
+  commission_rate?: number;
+  financial_status?: 'aguardando_nota' | 'pendente' | 'pago';
 }
 
 export interface Settings {
@@ -43,7 +52,6 @@ export interface Settings {
   reminder_body: string;
   summary_subject: string;
   summary_body: string;
-  // Novos campos SMTP
   smtp_host?: string;
   smtp_port?: number;
   smtp_user?: string;

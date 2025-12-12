@@ -5,9 +5,9 @@ import { CheckCircle, XCircle, FileText, Clock, Building, ExternalLink } from 'l
 import { format, parseISO } from 'date-fns';
 
 const Portal: React.FC = () => {
-  const { token } = useParams(); // Pega do link: /portal/:token
+  const { token } = useParams();
   const [searchParams] = useSearchParams();
-  const highlightId = searchParams.get('id'); // Licitação destaque: ?id=123
+  const highlightId = searchParams.get('id');
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -15,10 +15,12 @@ const Portal: React.FC = () => {
   const loadData = async () => {
     try {
       if (token) {
+        // Agora usa a função RPC segura
         const portalData = await api.getPortalData(token);
         setData(portalData);
       }
     } catch (error) {
+      console.error(error); // Bom para debug
       alert("Link inválido ou expirado.");
     } finally {
       setLoading(false);
@@ -30,20 +32,25 @@ const Portal: React.FC = () => {
   const handleDecision = async (bidId: string, decision: 'Participar' | 'Descartar') => {
     if (!confirm(`Confirmar decisão: ${decision}?`)) return;
     try {
-      await api.saveDecision(bidId, decision);
-      await loadData(); // Recarrega para atualizar a tela
+      // Verifica se temos o token na URL
+      if (!token) throw new Error("Token de acesso não encontrado.");
+
+      // Passa o token para a API (Isso faltava na versão anterior)
+      await api.saveDecision(bidId, decision, token);
+      
+      await loadData(); 
       alert("Decisão registrada com sucesso!");
     } catch (e) {
-      alert("Erro ao salvar.");
+      console.error(e);
+      alert("Erro ao salvar. Tente atualizar a página.");
     }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50">Carregando...</div>;
-  if (!data) return <div className="p-10 text-center">Acesso não autorizado.</div>;
+  if (!data) return <div className="p-10 text-center">Link inválido ou expirado.</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Cabeçalho */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2 text-blue-700">
           <Building size={24} />
@@ -57,7 +64,7 @@ const Portal: React.FC = () => {
 
       <main className="max-w-4xl mx-auto p-6 space-y-8">
         
-        {/* ÁREA DE DECISÃO (Destaque) */}
+        {/* Destaque */}
         {data.bids.map((bid: any) => {
           if (bid.id !== highlightId || bid.decision !== 'Pendente') return null;
           return (
@@ -70,7 +77,7 @@ const Portal: React.FC = () => {
               </div>
               <div className="p-8 text-center">
                 <h3 className="text-2xl font-bold mb-2">{bid.title}</h3>
-                <p className="text-slate-500 mb-6">Data da Licitação: {format(parseISO(bid.date), 'dd/MM/yyyy')}</p>
+                <p className="text-slate-500 mb-6">Data: {format(parseISO(bid.date), 'dd/MM/yyyy')}</p>
                 
                 {bid.link_docs && (
                   <a href={bid.link_docs} target="_blank" className="text-blue-600 hover:underline flex items-center justify-center gap-1 mb-8">
@@ -97,19 +104,15 @@ const Portal: React.FC = () => {
           );
         })}
 
-        {/* HISTÓRICO */}
+        {/* Histórico */}
         <div>
           <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <FileText /> Histórico de Licitações
+            <FileText /> Histórico
           </h2>
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                <tr>
-                  <th className="px-6 py-3">Data</th>
-                  <th className="px-6 py-3">Título</th>
-                  <th className="px-6 py-3">Sua Decisão</th>
-                </tr>
+                <tr><th className="px-6 py-3">Data</th><th className="px-6 py-3">Título</th><th className="px-6 py-3">Decisão</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {data.bids.map((bid: any) => (
@@ -127,7 +130,6 @@ const Portal: React.FC = () => {
             </table>
           </div>
         </div>
-
       </main>
     </div>
   );

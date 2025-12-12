@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '../../services/api';
-import { MessageCircle } from 'lucide-react'; // Ícone do WhatsApp (opcional, mas fica bonito)
+import { MessageCircle, Eye, EyeOff } from 'lucide-react'; // <--- Importamos os ícones novos
 
 const Login: React.FC = () => {
   const { register, handleSubmit } = useForm();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // <--- Estado para controlar visibilidade
   const navigate = useNavigate();
 
   const onSubmit = async (data: any) => {
@@ -41,14 +42,26 @@ const Login: React.FC = () => {
               placeholder="seu@email.com"
             />
           </div>
+          
+          {/* CAMPO DE SENHA COM OLHINHO */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
-            <input 
-              {...register('password', { required: true })}
-              type="password" 
-              className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input 
+                {...register('password', { required: true })}
+                type={showPassword ? "text" : "password"} // <--- Muda dinamicamente
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-10" // pr-10 para o texto não ficar embaixo do ícone
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                tabIndex={-1} // Para não atrapalhar a navegação com Tab
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
           
           <div className="flex items-center justify-between text-sm">

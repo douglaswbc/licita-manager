@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Bid, Client, Settings, Profile } from '../types'; // Adicionei Profile na importação
+import { Bid, Client, Settings, Profile } from '../types';
 
 export const api = {
   // --- AUTH ---
@@ -34,7 +34,7 @@ export const api = {
 
   // --- CLIENTES ---
   getClients: async (): Promise<Client[]> => {
-    const { data, error } = await supabase.from('clients').select('*');
+    const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     
     return data.map((item: any) => ({
@@ -42,7 +42,11 @@ export const api = {
       name: item.nome,      
       email: item.email,
       company: item.empresa,
-      access_token: item.access_token 
+      access_token: item.access_token,
+      contract_value: item.contract_value,
+      commission_rate: item.commission_rate,
+      active: item.active,
+      created_at: item.created_at
     })) || [];
   },
 
@@ -53,11 +57,18 @@ export const api = {
       nome: client.name,
       email: client.email,
       empresa: client.company,
+      contract_value: client.contract_value || 0,
+      commission_rate: client.commission_rate || 0,
       user_id: user?.id
     };
     const { data, error } = await supabase.from('clients').upsert(payload).select().single();
     if (error) throw error;
     return data;
+  },
+
+  toggleClientStatus: async (id: string, isActive: boolean) => {
+    const { error } = await supabase.from('clients').update({ active: isActive }).eq('id', id);
+    if (error) throw error;
   },
 
   deleteClient: async (id: string) => {
@@ -85,7 +96,10 @@ export const api = {
       summary_link: item.link_resumo,
       summary_sent_at: item.resumo_enviado_em,
       decision: item.decisao_cliente || 'Pendente',
-      decision_at: item.data_decisao
+      decision_at: item.data_decisao,
+      final_value: item.final_value,
+      commission_rate: item.commission_rate,
+      financial_status: item.financial_status || 'aguardando_nota'
     })) || [];
   },
 
@@ -103,6 +117,9 @@ export const api = {
       resumo_enviado_em: bid.summary_sent_at,
       decisao_cliente: bid.decision, 
       data_decisao: bid.decision_at,
+      final_value: bid.final_value || 0,
+      commission_rate: bid.commission_rate || 0,
+      financial_status: bid.financial_status,
       user_id: user?.id
     };
     const { data, error } = await supabase.from('licitacoes').upsert(payload).select().single();
@@ -110,60 +127,68 @@ export const api = {
     return data;
   },
 
+  updateFinancialStatus: async (bidId: string, status: string) => {
+    const { error } = await supabase.from('licitacoes').update({ financial_status: status }).eq('id', bidId);
+    if (error) throw error;
+  },
+
   deleteBid: async (id: string) => {
     const { error } = await supabase.from('licitacoes').delete().eq('id', id);
     if (error) throw error;
   },
 
-  // --- PORTAL ---
+  // --- PORTAL (CORRIGIDO PARA RPC) ---
   getPortalData: async (token: string) => {
-    const { data: client, error: errClient } = await supabase.from('clients').select('*').eq('access_token', token).single();
-    if (errClient || !client) throw new Error("Acesso Inválido");
+    // Chama a função SQL 'get_portal_data'
+    const { data, error } = await supabase.rpc('get_portal_data', { p_token: token });
 
-    const { data: bids, error: errBids } = await supabase.from('licitacoes').select('*').eq('client_id', client.id).order('data_licitacao', { ascending: false });
-    if (errBids) throw errBids;
+    if (error) throw error;
+    if (!data) throw new Error("Link inválido ou expirado.");
 
+    // Mapeia os dados do banco para o Frontend
     return {
-      client: { name: client.nome, company: client.empresa },
-      bids: bids.map((item: any) => ({
+      client: { 
+        name: data.client.nome, // Banco: nome -> Front: name
+        company: data.client.empresa 
+      },
+      bids: data.bids.map((item: any) => ({
         id: item.id,
         title: item.titulo,
         date: item.data_licitacao,
         link_docs: item.link_docs,
         status: item.status,
         decision: item.decisao_cliente || 'Pendente',
-        decision_at: item.data_decisao
+        decision_at: item.data_decisao,
+        final_value: item.final_value,
+        financial_status: item.financial_status
       }))
     };
   },
 
-  saveDecision: async (bidId: string, decision: 'Participar' | 'Descartar') => {
-    let novoStatus = 'Aguardando Cliente';
-    if (decision === 'Participar') novoStatus = 'Aguardando Licitação';
-    if (decision === 'Descartar') novoStatus = 'Descartada';
-
-    const { error } = await supabase.from('licitacoes').update({ 
-      decisao_cliente: decision,
-      data_decisao: new Date().toISOString(),
-      status: novoStatus
-    }).eq('id', bidId);
+  saveDecision: async (bidId: string, decision: string, token: string) => {
+    // Chama a função SQL 'save_bid_decision'
+    // Precisamos enviar o token para o banco validar quem está salvando
+    const { error } = await supabase.rpc('save_bid_decision', {
+      p_token: token,
+      p_bid_id: bidId,
+      p_decision: decision
+    });
+    
     if (error) throw error;
   },
 
-  // --- SETTINGS (CORRIGIDO: Agora inclui SMTP) ---
+  // --- SETTINGS ---
   getSettings: async (): Promise<Settings | null> => {
     const { data, error } = await supabase.from('settings').select('*').single();
-    if (error) {
-      if (error.code === 'PGRST116') return null; 
-      throw error;
-    }
+    if (error && error.code !== 'PGRST116') return null;
+    if (!data) return null;
+    
     return {
       email_sender: data.email_remetente,
       reminder_subject: data.assunto_lembrete,
       reminder_body: data.msg_lembrete,
       summary_subject: data.assunto_resumo,
       summary_body: data.msg_resumo,
-      // Novos campos de SMTP mapeados do banco para o frontend
       smtp_host: data.smtp_host,
       smtp_port: data.smtp_port,
       smtp_user: data.smtp_user,
@@ -175,11 +200,7 @@ export const api = {
     const { user } = (await supabase.auth.getUser()).data;
     if (!user) throw new Error("Usuário não logado");
 
-    const { data: existing } = await supabase
-      .from('settings')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const { data: existing } = await supabase.from('settings').select('id').eq('user_id', user.id).maybeSingle();
 
     const payload = {
       id: existing?.id, 
@@ -189,16 +210,14 @@ export const api = {
       msg_lembrete: settings.reminder_body,
       assunto_resumo: settings.summary_subject,
       msg_resumo: settings.summary_body,
-      // Novos campos de SMTP salvos no banco
       smtp_host: settings.smtp_host,
       smtp_port: settings.smtp_port,
       smtp_user: settings.smtp_user,
       smtp_pass: settings.smtp_pass
     };
 
-    const { data, error } = await supabase.from('settings').upsert(payload).select().single();
+    const { error } = await supabase.from('settings').upsert(payload);
     if (error) throw error;
-    return data;
   },
 
   // --- ADMIN ---
@@ -209,15 +228,19 @@ export const api = {
     return data;
   },
 
-  getAllUsers: async (): Promise<Profile[]> => {
+  getAllUsers: async () => {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     return data as Profile[];
   },
 
+  toggleUserStatus: async (userId: string, isActive: boolean) => {
+    const { error } = await supabase.from('profiles').update({ active: isActive }).eq('id', userId);
+    if (error) throw error;
+  },
+
   adminCreateUser: async (email: string, password: string) => {
     const { data: { session } } = await supabase.auth.getSession();
-    
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`, {
       method: 'POST',
       headers: {
@@ -226,7 +249,6 @@ export const api = {
       },
       body: JSON.stringify({ email, password })
     });
-
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Erro ao criar usuário');
     return result;

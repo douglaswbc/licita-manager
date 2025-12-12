@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X, Shield } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X, Shield, Wallet } from 'lucide-react';
 import { api } from '../services/api';
 
 interface SidebarItemProps {
@@ -54,6 +54,7 @@ const Layout: React.FC = () => {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/bids', label: 'Licitações', icon: FileText },
     { path: '/clients', label: 'Clientes', icon: Users },
+    { path: '/financial', label: 'Financeiro', icon: Wallet },
     { path: '/settings', label: 'Configurações', icon: SettingsIcon },
   ];
 
