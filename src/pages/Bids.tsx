@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { Bid, BidStatus, Client } from '../types';
 import Modal from '../components/Modal';
 import { format, parseISO } from 'date-fns';
+import { toast } from 'react-toastify';
 
 const StatusBadge = ({ status }: { status: BidStatus }) => {
   const styles = {
