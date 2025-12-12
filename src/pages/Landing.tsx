@@ -56,7 +56,7 @@ const Landing: React.FC = () => {
             <span className="text-blue-600">Consultores de Licitações.</span>
           </h1>
           <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Gerencie prazos, automate envios, controle contratos de clientes e suas comissões de êxito em um único lugar. Profissionalize sua assessoria hoje.
+            Gerencie prazos, automatize envios, controle contratos de clientes e suas comissões de êxito em um único lugar. Profissionalize sua assessoria hoje.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link 
