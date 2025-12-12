@@ -15,6 +15,7 @@ import Landing from './pages/Landing';
 import ClientPortal from './pages/Portal';
 import Layout from './components/Layout';
 import Kanban from './pages/Kanban';
+import Signup from './pages/auth/Signup';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<div>Em breve</div>} />
 
           {/* ROTAS PROTEGIDAS */}
