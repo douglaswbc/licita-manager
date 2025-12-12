@@ -41,37 +41,37 @@ const Settings = () => {
   if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
+    <div className="p-4 md:p-8 space-y-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Configurações</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-8">
         
-        {/* --- ÁREA DE SMTP (NOVO) --- */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-orange-200 border-l-4 border-l-orange-500">
+        {/* --- ÁREA DE SMTP --- */}
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-orange-200 border-l-4 border-l-orange-500">
           <div className="flex items-center gap-2 mb-4 text-orange-800">
             <Server size={24} />
             <h2 className="text-xl font-bold">Seu Servidor de E-mail (SMTP)</h2>
           </div>
-          <p className="text-sm text-slate-500 mb-4">
+          <p className="text-sm text-slate-500 mb-4 text-justify">
             Configure aqui o e-mail que fará os disparos. Se for Gmail, use a "Senha de App".
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Host SMTP</label>
-              <input {...register('smtp_host')} className="w-full p-2 border rounded" placeholder="smtp.gmail.com" />
+              <input {...register('smtp_host')} className="w-full p-2 border rounded text-sm" placeholder="smtp.gmail.com" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Porta</label>
-              <input type="number" {...register('smtp_port')} className="w-full p-2 border rounded" placeholder="587" />
+              <input type="number" {...register('smtp_port')} className="w-full p-2 border rounded text-sm" placeholder="587" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Usuário / E-mail</label>
-              <input {...register('smtp_user')} className="w-full p-2 border rounded" placeholder="seu.email@gmail.com" />
+              <input {...register('smtp_user')} className="w-full p-2 border rounded text-sm" placeholder="seu.email@gmail.com" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Senha (Senha de App)</label>
               <div className="relative">
-                <input type="password" {...register('smtp_pass')} className="w-full p-2 border rounded" placeholder="••••••••" />
+                <input type="password" {...register('smtp_pass')} className="w-full p-2 border rounded text-sm" placeholder="••••••••" />
                 <Lock className="absolute right-3 top-2.5 text-gray-400" size={16} />
               </div>
             </div>
@@ -79,32 +79,32 @@ const Settings = () => {
         </div>
 
         {/* --- MENSAGENS --- */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-slate-800 flex items-center gap-2"><Mail /> Modelos de E-mail</h2>
           
           {/* Lembrete */}
           <div className="mb-8">
-            <div className="flex justify-between mb-2">
+            <div className="flex flex-col md:flex-row justify-between mb-2 gap-2">
               <h3 className="font-medium text-blue-700">Lembrete Automático</h3>
-              <div className="flex gap-2"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LICITACAO}}" /></div>
+              <div className="flex gap-2 flex-wrap"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LICITACAO}}" /></div>
             </div>
-            <input {...register('reminder_subject')} className="w-full p-2 border rounded mb-2" placeholder="Assunto" />
-            <textarea {...register('reminder_body')} rows={3} className="w-full p-2 border rounded" />
+            <input {...register('reminder_subject')} className="w-full p-2 border rounded mb-2 text-sm" placeholder="Assunto" />
+            <textarea {...register('reminder_body')} rows={4} className="w-full p-2 border rounded text-sm" />
           </div>
 
           {/* Resumo */}
           <div>
-            <div className="flex justify-between mb-2">
+            <div className="flex flex-col md:flex-row justify-between mb-2 gap-2">
               <h3 className="font-medium text-purple-700">Envio de Resumo</h3>
-              <div className="flex gap-2"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LINK}}" /></div>
+              <div className="flex gap-2 flex-wrap"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LINK}}" /></div>
             </div>
-            <input {...register('summary_subject')} className="w-full p-2 border rounded mb-2" placeholder="Assunto" />
-            <textarea {...register('summary_body')} rows={3} className="w-full p-2 border rounded" />
+            <input {...register('summary_subject')} className="w-full p-2 border rounded mb-2 text-sm" placeholder="Assunto" />
+            <textarea {...register('summary_body')} rows={4} className="w-full p-2 border rounded text-sm" />
           </div>
         </div>
 
         <div className="flex justify-end">
-          <button type="submit" disabled={isSubmitting} className="bg-slate-900 text-white px-8 py-3 rounded-lg hover:bg-slate-800 flex gap-2">
+          <button type="submit" disabled={isSubmitting} className="w-full md:w-auto bg-slate-900 text-white px-8 py-3 rounded-lg hover:bg-slate-800 flex gap-2 justify-center items-center font-bold shadow-lg">
             {isSubmitting ? <Loader2 className="animate-spin" /> : <Save />} Salvar Tudo
           </button>
         </div>
