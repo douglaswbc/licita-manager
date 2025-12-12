@@ -5,6 +5,8 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import Login from './pages/auth/Login';
+import Signup from './pages/auth/Signup';
+import ForgotPassword from './pages/auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Bids from './pages/Bids';
 import Clients from './pages/Clients';
@@ -15,7 +17,6 @@ import Landing from './pages/Landing';
 import ClientPortal from './pages/Portal';
 import Layout from './components/Layout';
 import Kanban from './pages/Kanban';
-import Signup from './pages/auth/Signup';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -29,7 +30,7 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<div>Em breve</div>} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* ROTAS PROTEGIDAS */}
           <Route element={<ProtectedRoute />}>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '../../services/api';
-import { MessageCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Login: React.FC = () => {
@@ -33,7 +33,6 @@ const Login: React.FC = () => {
         {/* --- CABEÇALHO COM LOGO --- */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            {/* Puxando o favicon direto da pasta public */}
             <img src="/favicon.png" alt="Logo LicitaManager" className="h-16 w-auto" />
           </div>
           
@@ -95,15 +94,15 @@ const Login: React.FC = () => {
 
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
           <p className="text-sm text-[#666666] mb-3">Não tem uma conta?</p>
-          <a 
-            href="https://wa.me/5591992294869?text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20o%20LicitaManager." 
-            target="_blank" 
-            rel="noopener noreferrer"
+          
+          {/* --- AQUI ESTÁ A MUDANÇA --- */}
+          <Link 
+            to="/signup" 
             className="inline-flex items-center gap-2 text-[#002A54] font-bold hover:text-[#009B4D] hover:bg-slate-50 px-4 py-2 rounded-lg transition-all"
           >
-            <MessageCircle size={18} />
-            Fale com o Admin no WhatsApp
-          </a>
+            <UserPlus size={18} />
+            Criar conta agora
+          </Link>
         </div>
       </div>
     </div>
