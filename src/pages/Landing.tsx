@@ -106,7 +106,7 @@ const Landing: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold mb-3">Portal do Cliente</h3>
               <p className="text-slate-600">
-                Seu cliente recebe um "Link Mágico" para acessar o resumo e decidir se participa ou descarta a licitação. Sem senhas.
+                Seu cliente recebe um "Link Mágico" para acessar o resumo e decidir se participa ou descarta a licitação.
               </p>
             </div>
 
