@@ -15,8 +15,8 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon: Icon, label, active
     to={to}
     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
       active 
-        ? 'bg-blue-600 text-white' 
-        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+        ? 'bg-[#009B4D] text-white shadow-md' // <--- VERDE DA MARCA (Item Ativo)
+        : 'text-slate-300 hover:bg-[#00356B] hover:text-white' // Hover um pouco mais claro que o fundo
     }`}
   >
     <Icon size={20} />
@@ -27,23 +27,16 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon: Icon, label, active
 const Layout: React.FC = () => { 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>(''); // <--- Estado para o Email
+  const [userEmail, setUserEmail] = useState<string>('');
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadUser = async () => {
-      // 1. Pega o perfil para saber se é admin
       const profile = await api.getProfile();
-      if (profile?.role === 'admin') {
-        setIsAdmin(true);
-      }
-      
-      // 2. Pega a sessão para pegar o e-mail real
+      if (profile?.role === 'admin') setIsAdmin(true);
       const session = await api.getSession();
-      if (session?.user?.email) {
-        setUserEmail(session.user.email);
-      }
+      if (session?.user?.email) setUserEmail(session.user.email);
     };
     loadUser();
   }, []);
@@ -53,7 +46,6 @@ const Layout: React.FC = () => {
       await api.logout();
       navigate('/login');
     } catch (error) {
-      console.error("Erro ao sair", error);
       navigate('/login');
     }
   };
@@ -72,24 +64,27 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-50 flex items-center justify-between p-4 shadow-md">
+      {/* Mobile Header - AZUL DA MARCA */}
+      <div className="md:hidden fixed top-0 w-full bg-[#002A54] text-white z-50 flex items-center justify-between p-4 shadow-md">
         <span className="text-xl font-bold tracking-tight">LicitaManager</span>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
       </div>
 
-      {/* Sidebar */}
+      {/* Sidebar - AZUL DA MARCA */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-100 transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:flex md:flex-col
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#002A54] text-white transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:flex md:flex-col
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        pt-16 md:pt-0
+        pt-16 md:pt-0 border-r border-[#001F3F]
         `}
       >
         <div className="p-6 hidden md:block">
-          <h1 className="text-2xl font-bold tracking-tight text-white">LicitaManager</h1>
-          <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">Enterprise Edition</p>
+          {/* Logo Texto */}
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">
+            LICITA<span className="text-[#009B4D]">MANAGER</span>
+          </h1>
+          <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">Gestão Estratégica</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -104,27 +99,25 @@ const Layout: React.FC = () => {
           ))}
         </nav>
 
-        {/* --- RODAPÉ DA SIDEBAR COM INFO DO USUÁRIO --- */}
-        <div className="p-4 border-t border-slate-800">
-          
-          {/* Info do Usuário */}
+        {/* Rodapé da Sidebar */}
+        <div className="p-4 border-t border-[#001F3F]">
           <div className="flex items-center gap-3 px-2 mb-4">
-            <div className="bg-slate-800 p-2 rounded-full text-slate-400">
+            <div className="bg-[#00356B] p-2 rounded-full text-white">
               <UserCircle size={24} />
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-medium text-white truncate">
                 {isAdmin ? 'Administrador' : 'Assessor'}
               </p>
-              <p className="text-xs text-slate-500 truncate" title={userEmail}>
-                {userEmail || 'Carregando...'}
+              <p className="text-xs text-slate-400 truncate" title={userEmail}>
+                {userEmail || '...'}
               </p>
             </div>
           </div>
 
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-red-400 hover:text-white hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
+            className="flex items-center gap-3 px-4 py-3 w-full text-red-300 hover:text-white hover:bg-red-900/30 rounded-lg transition-colors text-sm font-medium"
           >
             <LogOut size={20} />
             <span>Sair</span>
