@@ -71,6 +71,26 @@ export const api = {
     if (error) throw error;
   },
   
+  // --- AUTOMAÇÕES ---
+  
+  // Função para enviar o resumo IMEDIATAMENTE
+  sendSummaryEmail: async (bidId: string, link: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-summary`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}` // Envia token para segurança
+      },
+      body: JSON.stringify({ bidId, summaryLink: link })
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Erro ao enviar e-mail.');
+    return result;
+  },
+  
   // --- CLIENTES ---
   // Função para criar o login do cliente
   createClientUser: async (clientId: string, email: string) => {

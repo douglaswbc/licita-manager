@@ -156,18 +156,40 @@ const Bids: React.FC = () => {
 
   const onSummarySubmit = async (data: { summary_link: string }) => {
     if (!summaryBid) return;
+    
+    // Toast de carregamento
+    const idToast = toast.loading("Enviando resumo por e-mail...");
+
     try {
+      // 1. Salva no banco primeiro (para garantir que temos o link salvo)
       const updatedBid = {
         ...summaryBid,
         summary_link: data.summary_link,
-        summary_sent_at: new Date().toISOString(),
+        // Não marcamos a data aqui, a Edge Function marca se der certo o envio
       };
       await api.saveBid(updatedBid);
-      await loadData();
+
+      // 2. Chama a Edge Function para disparar o e-mail AGORA
+      await api.sendSummaryEmail(summaryBid.id, data.summary_link);
+
+      await loadData(); // Recarrega a tabela para mostrar o ícone verde
       setIsSummaryModalOpen(false);
-      alert('Resumo salvo!');
-    } catch (e) {
-      alert("Erro ao salvar resumo.");
+      
+      toast.update(idToast, { 
+        render: "Resumo enviado com sucesso!", 
+        type: "success", 
+        isLoading: false, 
+        autoClose: 3000 
+      });
+
+    } catch (e: any) {
+      console.error(e);
+      toast.update(idToast, { 
+        render: `Erro: ${e.message}`, 
+        type: "error", 
+        isLoading: false, 
+        autoClose: 5000 
+      });
     }
   };
 
