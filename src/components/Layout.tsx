@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'; // <--- Adicionado Outlet
-import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X, Shield } from 'lucide-react';
 import { api } from '../services/api';
 
 interface SidebarItemProps {
@@ -24,11 +24,20 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon: Icon, label, active
   </Link>
 );
 
-// Removemos a prop 'children' e usamos Outlet
 const Layout: React.FC = () => { 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // Estado para controlar visibilidade
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Verifica se o usuário é Admin ao carregar o Layout
+  useEffect(() => {
+    api.getProfile().then(profile => {
+      if (profile?.role === 'admin') {
+        setIsAdmin(true);
+      }
+    });
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -40,12 +49,18 @@ const Layout: React.FC = () => {
     }
   };
 
+  // Itens padrão
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/bids', label: 'Licitações', icon: FileText },
     { path: '/clients', label: 'Clientes', icon: Users },
     { path: '/settings', label: 'Configurações', icon: SettingsIcon },
   ];
+
+  // Se for admin, adiciona o item extra na lista
+  if (isAdmin) {
+    navItems.push({ path: '/admin', label: 'Gestão de Assessores', icon: Shield });
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -87,7 +102,7 @@ const Layout: React.FC = () => {
             className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium"
           >
             <LogOut size={20} />
-            <span>Logout</span>
+            <span>Sair</span>
           </button>
         </div>
       </aside>
@@ -95,7 +110,6 @@ const Layout: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 w-full overflow-y-auto pt-16 md:pt-0">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {/* O Outlet é onde as páginas (Dashboard, Bids, etc) serão desenhadas */}
           <Outlet />
         </div>
       </main>

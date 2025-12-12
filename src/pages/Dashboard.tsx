@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
         {/* Gráfico */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Funil de Licitações</h2>
-          <div className="h-64">
+          <div className="h-64" style={{ minHeight: '250px' }}> 
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

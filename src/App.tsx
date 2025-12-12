@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Bids from './pages/Bids';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
+import AdminUsers from './pages/AdminUsers';
 
 // Componente auxiliar para redirecionar se já estiver logado
 const PublicRoute = ({ children }: { children: JSX.Element }) => {
@@ -31,7 +32,6 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* --- ROTAS PÚBLICAS --- */}
           
           {/* Rota Raiz (Landing Page) */}
           <Route path="/" element={
@@ -60,6 +60,8 @@ function App() {
                 <Route path="/bids" element={<Bids />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/settings" element={<Settings />} />
+                {/* ROTA NOVA DO ADMIN */}
+                <Route path="/admin" element={<AdminUsers />} />
              </Route>
           </Route>
 

@@ -1,3 +1,10 @@
+export interface Profile {
+  id: string;
+  email: string;
+  role: 'admin' | 'user';
+  created_at: string;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -36,6 +43,11 @@ export interface Settings {
   reminder_body: string;
   summary_subject: string;
   summary_body: string;
+  // Novos campos SMTP
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_pass?: string;
 }
 
 export interface User {

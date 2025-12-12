@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabase';
-import { Bid, Client, Settings } from '../types';
+import { Bid, Client, Settings, Profile } from '../types'; // Adicionei Profile na importação
 
 export const api = {
-  // --- AUTH (Mantém igual) ---
+  // --- AUTH ---
   login: async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -32,7 +32,7 @@ export const api = {
     return data.session;
   },
 
-  // --- CLIENTES (Mantém igual) ---
+  // --- CLIENTES ---
   getClients: async (): Promise<Client[]> => {
     const { data, error } = await supabase.from('clients').select('*');
     if (error) throw error;
@@ -65,7 +65,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- LICITAÇÕES (Mantém igual) ---
+  // --- LICITAÇÕES ---
   getBids: async (): Promise<Bid[]> => {
     const { data, error } = await supabase
       .from('licitacoes')
@@ -115,7 +115,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- PORTAL (Mantém igual) ---
+  // --- PORTAL ---
   getPortalData: async (token: string) => {
     const { data: client, error: errClient } = await supabase.from('clients').select('*').eq('access_token', token).single();
     if (errClient || !client) throw new Error("Acesso Inválido");
@@ -150,7 +150,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- SETTINGS (CORRIGIDO PARA EVITAR DUPLICIDADE) ---
+  // --- SETTINGS (CORRIGIDO: Agora inclui SMTP) ---
   getSettings: async (): Promise<Settings | null> => {
     const { data, error } = await supabase.from('settings').select('*').single();
     if (error) {
@@ -162,7 +162,12 @@ export const api = {
       reminder_subject: data.assunto_lembrete,
       reminder_body: data.msg_lembrete,
       summary_subject: data.assunto_resumo,
-      summary_body: data.msg_resumo
+      summary_body: data.msg_resumo,
+      // Novos campos de SMTP mapeados do banco para o frontend
+      smtp_host: data.smtp_host,
+      smtp_port: data.smtp_port,
+      smtp_user: data.smtp_user,
+      smtp_pass: data.smtp_pass
     };
   },
 
@@ -170,7 +175,6 @@ export const api = {
     const { user } = (await supabase.auth.getUser()).data;
     if (!user) throw new Error("Usuário não logado");
 
-    // 1. Busca se JÁ EXISTE uma configuração para este usuário
     const { data: existing } = await supabase
       .from('settings')
       .select('id')
@@ -178,18 +182,53 @@ export const api = {
       .maybeSingle();
 
     const payload = {
-      // Se achou, usa o ID existente para ATUALIZAR. Se não, deixa undefined para CRIAR.
       id: existing?.id, 
       user_id: user.id,
       email_remetente: settings.email_sender,
       assunto_lembrete: settings.reminder_subject,
       msg_lembrete: settings.reminder_body,
       assunto_resumo: settings.summary_subject,
-      msg_resumo: settings.summary_body
+      msg_resumo: settings.summary_body,
+      // Novos campos de SMTP salvos no banco
+      smtp_host: settings.smtp_host,
+      smtp_port: settings.smtp_port,
+      smtp_user: settings.smtp_user,
+      smtp_pass: settings.smtp_pass
     };
 
     const { data, error } = await supabase.from('settings').upsert(payload).select().single();
     if (error) throw error;
     return data;
+  },
+
+  // --- ADMIN ---
+  getProfile: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    return data;
+  },
+
+  getAllUsers: async (): Promise<Profile[]> => {
+    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Profile[];
+  },
+
+  adminCreateUser: async (email: string, password: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Erro ao criar usuário');
+    return result;
   }
 };
