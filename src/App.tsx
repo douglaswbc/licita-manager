@@ -1,74 +1,47 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import Layout from './components/Layout';
+import { AuthProvider } from './contexts/AuthContext';
+// 1. IMPORTAR TOASTIFY
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Páginas
-import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import UpdatePassword from './pages/auth/UpdatePassword';
-import Portal from './pages/Portal';
 import Dashboard from './pages/Dashboard';
 import Bids from './pages/Bids';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
 import Financial from './pages/Financial';
+import Landing from './pages/Landing';
 import ClientPortal from './pages/Portal';
-
-// Componente auxiliar para redirecionar se já estiver logado
-const PublicRoute = ({ children }: { children: JSX.Element }) => {
-  const { session, loading } = useAuth(); // <--- Corrigido de 'user' para 'session'
-  
-  if (loading) return null;
-  
-  // Se já estiver logado (tem sessão), manda direto pro Dashboard
-  if (session) return <Navigate to="/dashboard" replace />;
-  
-  return children;
-};
+import Layout from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* 2. ADICIONAR O CONTAINER AQUI (Pode ser antes ou depois das rotas) */}
+        <ToastContainer position="top-right" autoClose={3000} theme="colored" />
+        
         <Routes>
-          
-          {/* Rota Raiz (Landing Page) */}
-          <Route path="/" element={
-            <PublicRoute>
-              <Landing />
-            </PublicRoute>
-          } />
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<div>Em breve</div>} />
 
-          <Route path="/login" element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          } />
-          
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/update-password" element={<UpdatePassword />} />
-          
-          {/* ROTA DO CLIENTE (Sem Layout de Admin) */}
-          <Route path="/portal" element={<ClientPortal />} />
-          
-          {/* --- ROTAS PROTEGIDAS (ÁREA LOGADA) --- */}
+          {/* ROTAS PROTEGIDAS */}
           <Route element={<ProtectedRoute />}>
-             {/* Layout agora envolve as rotas sem forçar o caminho '/' */}
+             <Route path="/portal" element={<ClientPortal />} />
+             
              <Route element={<Layout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/bids" element={<Bids />} />
                 <Route path="/clients" element={<Clients />} />
-                <Route path="/settings" element={<Settings />} />
                 <Route path="/financial" element={<Financial />} />
-                {/* ROTA NOVA DO ADMIN */}
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/admin" element={<AdminUsers />} />
              </Route>
           </Route>
 
-          {/* Rota de captura (404) - Se não achar nada, vai pra Landing ou Login */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

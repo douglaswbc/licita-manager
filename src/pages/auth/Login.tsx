@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '../../services/api';
+import { toast } from 'react-toastify';
 import { MessageCircle, Eye, EyeOff } from 'lucide-react'; // <--- Importamos os ícones novos
 
 const Login: React.FC = () => {
@@ -15,10 +16,11 @@ const Login: React.FC = () => {
     try {
       const { user } = await api.login(data.email, data.password);
       if (user) {
-        navigate('/');
+        toast.success(`Bem-vindo de volta!`); // <--- SUCESSO
+        navigate('/dashboard'); // (O roteamento cuida se for client)
       }
     } catch (error: any) {
-      alert('Falha no Login: ' + (error.message || 'Erro desconhecido'));
+      toast.error('E-mail ou senha incorretos.'); // <--- ERRO
     } finally {
       setLoading(false);
     }

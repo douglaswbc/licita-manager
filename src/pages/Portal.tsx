@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { CheckCircle, XCircle, FileText, Clock, Building, ExternalLink, LogOut, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const Portal: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -24,13 +25,20 @@ const Portal: React.FC = () => {
   useEffect(() => { loadData(); }, []);
 
   const handleDecision = async (bidId: string, decision: 'Participar' | 'Descartar') => {
-    if (!confirm(`Confirmar decisão: ${decision}?`)) return;
+    // Confirm nativo é bom para evitar cliques acidentais
+    if (!confirm(`Tem certeza que deseja ${decision}?`)) return;
+    
     try {
       await api.saveClientDecision(bidId, decision);
       await loadData();
-      alert("Decisão registrada!");
+      
+      if (decision === 'Participar') {
+        toast.success("Ótimo! Vamos preparar a documentação.");
+      } else {
+        toast.info("Decisão registrada. Licitação descartada.");
+      }
     } catch (e) {
-      alert("Erro ao salvar.");
+      toast.error("Erro ao registrar decisão.");
     }
   };
 

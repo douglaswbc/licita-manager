@@ -4,6 +4,7 @@ import { Plus, Trash2, Edit2, Mail, Building, Loader2, DollarSign, Percent, Togg
 import { api } from '../services/api';
 import { Client } from '../types';
 import Modal from '../components/Modal';
+import { toast } from 'react-toastify';
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -29,20 +30,34 @@ const Clients: React.FC = () => {
     loadClients();
   }, []);
 
-  // --- NOVA FUNÇÃO: GERAR LOGIN ---
+  // GERAR ACESSO
   const handleCreateAccess = async (client: Client) => {
-    if (!confirm(`Deseja gerar acesso para ${client.company}?\n\nLogin: ${client.email}\nSenha Padrão: mudar@1234`)) return;
+    if (!confirm(`Deseja gerar acesso para ${client.company}?`)) return; // Confirm continua sendo útil
 
     setGeneratingAccess(client.id);
     try {
       await api.createClientUser(client.id, client.email);
-      alert(`Acesso criado com sucesso!\n\nEnvie para o cliente:\nLink: https://licitamanager.com.br/login\nEmail: ${client.email}\nSenha: mudar@1234`);
-      await loadClients(); // Recarrega para atualizar o status (se tivermos essa info visualmente)
+      // Usamos toast com quebra de linha ou HTML se precisar, mas texto simples é melhor
+      toast.success(`Acesso criado! Login: ${client.email}`);
+      await loadClients();
     } catch (error: any) {
       console.error(error);
-      alert("Erro ao criar acesso: " + (error.message || "Verifique se o email já está em uso no Auth."));
+      toast.error(error.message || "Erro ao criar acesso. Verifique se o e-mail já existe.");
     } finally {
       setGeneratingAccess(null);
+    }
+  };
+
+  // SALVAR
+  const onSubmit = async (data: Client) => {
+    try {
+      const payload = editingClient ? { ...data, id: editingClient.id } : data;
+      await api.saveClient(payload);
+      await loadClients();
+      setIsModalOpen(false);
+      toast.success('Cliente salvo com sucesso!');
+    } catch (error) {
+      toast.error("Erro ao salvar cliente.");
     }
   };
 
@@ -71,18 +86,6 @@ const Clients: React.FC = () => {
       reset({ name: '', email: '', company: '', contract_value: 0, commission_rate: 0 });
     }
     setIsModalOpen(true);
-  };
-
-  const onSubmit = async (data: Client) => {
-    try {
-      const payload = editingClient ? { ...data, id: editingClient.id } : data;
-      await api.saveClient(payload);
-      await loadClients();
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error("Erro ao salvar cliente", error);
-      alert("Erro ao salvar cliente.");
-    }
   };
 
   const handleDelete = async (id: string) => {

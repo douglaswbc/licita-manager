@@ -7,6 +7,7 @@ import {
 import { api } from '../services/api';
 import { Profile } from '../types';
 import Modal from '../components/Modal';
+import { toast } from 'react-toastify';
 
 // Tipo auxiliar para a árvore
 interface AssessorNode extends Profile {
@@ -70,21 +71,23 @@ const AdminUsers: React.FC = () => {
 
   const handleToggleAssessor = async (assessor: AssessorNode) => {
     const action = assessor.active ? "BLOQUEAR" : "LIBERAR";
-    const msg = `ATENÇÃO: Ao ${action} o usuário ${assessor.email}, você também irá ${action} o acesso de seus ${assessor.clients.length} clientes vinculados.\n\nDeseja continuar?`;
-    
-    if (!confirm(msg)) return;
+    if (!confirm(`ATENÇÃO: Deseja ${action} o assessor e todos os seus clientes?`)) return;
+
+    // Loading Toast (opcional, para feedback instantâneo)
+    const idToast = toast.loading("Processando alterações...");
 
     try {
       const novoStatus = !assessor.active;
       setAssessors(prev => prev.map(a => a.id === assessor.id ? { 
-        ...a, 
-        active: novoStatus, 
-        clients: a.clients.map(c => ({ ...c, active: novoStatus })) 
+        ...a, active: novoStatus, clients: a.clients.map(c => ({ ...c, active: novoStatus })) 
       } : a));
 
       await api.toggleAssessorCascade(assessor.id, novoStatus);
+      
+      // Atualiza o toast de loading para sucesso
+      toast.update(idToast, { render: "Status atualizado com sucesso!", type: "success", isLoading: false, autoClose: 3000 });
     } catch (error) {
-      alert("Erro ao alterar status.");
+      toast.update(idToast, { render: "Erro ao alterar status.", type: "error", isLoading: false, autoClose: 3000 });
       loadData();
     }
   };
