@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Plus, Trash2, Edit2, Mail, Building, Loader2, DollarSign, Percent, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Mail, Building, Loader2, DollarSign, Percent, ToggleLeft, ToggleRight, Key, CheckCircle, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 import { Client } from '../types';
 import Modal from '../components/Modal';
@@ -10,6 +10,7 @@ const Clients: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [generatingAccess, setGeneratingAccess] = useState<string | null>(null); // ID do cliente sendo processado
   
   const { register, handleSubmit, reset, setValue } = useForm<Client>();
 
@@ -28,16 +29,31 @@ const Clients: React.FC = () => {
     loadClients();
   }, []);
 
+  // --- NOVA FUNÇÃO: GERAR LOGIN ---
+  const handleCreateAccess = async (client: Client) => {
+    if (!confirm(`Deseja gerar acesso para ${client.company}?\n\nLogin: ${client.email}\nSenha Padrão: mudar@1234`)) return;
+
+    setGeneratingAccess(client.id);
+    try {
+      await api.createClientUser(client.id, client.email);
+      alert(`Acesso criado com sucesso!\n\nEnvie para o cliente:\nLink: https://licitamanager.com.br/login\nEmail: ${client.email}\nSenha: mudar@1234`);
+      await loadClients(); // Recarrega para atualizar o status (se tivermos essa info visualmente)
+    } catch (error: any) {
+      console.error(error);
+      alert("Erro ao criar acesso: " + (error.message || "Verifique se o email já está em uso no Auth."));
+    } finally {
+      setGeneratingAccess(null);
+    }
+  };
+
   const handleToggleStatus = async (client: Client) => {
     try {
       const novoStatus = !client.active;
-      // Atualização Otimista (Muda na tela antes do banco)
       setClients(prev => prev.map(c => c.id === client.id ? { ...c, active: novoStatus } : c));
-      
       await api.toggleClientStatus(client.id, novoStatus);
     } catch (error) {
       alert("Erro ao alterar status.");
-      loadClients(); // Reverte
+      loadClients();
     }
   };
 
@@ -99,11 +115,10 @@ const Clients: React.FC = () => {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 font-semibold text-slate-700">Nome/Empresa</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Contato</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-right">Contrato</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-right">Comissão</th>
+                <th className="px-6 py-4 font-semibold text-slate-700">Empresa / Contato</th>
+                <th className="px-6 py-4 font-semibold text-slate-700">Contrato</th>
                 <th className="px-6 py-4 font-semibold text-slate-700 text-center">Status</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 text-center">Acesso Portal</th>
                 <th className="px-6 py-4 font-semibold text-slate-700 text-right">Ações</th>
               </tr>
             </thead>
@@ -116,28 +131,36 @@ const Clients: React.FC = () => {
                       {!client.active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase">Inativo</span>}
                     </div>
                     <div className="text-xs text-slate-500">{client.name}</div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} className="text-slate-400" />
-                      {client.email}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right font-medium text-slate-700">
-                    {client.contract_value ? `R$ ${Number(client.contract_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-right font-medium text-slate-700">
-                    {client.commission_rate ? `${client.commission_rate}%` : '-'}
+                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-1"><Mail size={10}/> {client.email}</div>
                   </td>
                   
-                  {/* COLUNA DE STATUS (TOGGLE) */}
+                  <td className="px-6 py-4 text-slate-700">
+                    <div className="font-medium">{client.contract_value ? `R$ ${Number(client.contract_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</div>
+                    <div className="text-xs text-slate-500">Comissão: {client.commission_rate ? `${client.commission_rate}%` : '0%'}</div>
+                  </td>
+                  
                   <td className="px-6 py-4 text-center">
                     <button 
                       onClick={() => handleToggleStatus(client)}
                       className={`transition-colors ${client.active ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-slate-600'}`}
-                      title={client.active ? "Contrato Ativo (Clique para Pausar)" : "Contrato Inativo (Clique para Ativar)"}
+                      title={client.active ? "Ativo (Clique para Pausar)" : "Inativo (Clique para Ativar)"}
                     >
                       {client.active ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
+                    </button>
+                  </td>
+
+                  {/* COLUNA DE ACESSO AO SISTEMA */}
+                  <td className="px-6 py-4 text-center">
+                    {/* Como não temos o campo auth_user_id no tipo Client ainda, vamos assumir que se não der erro ao criar, criou.
+                        Para ficar perfeito, adicione auth_user_id na interface Client em types.ts */}
+                    <button
+                      onClick={() => handleCreateAccess(client)}
+                      disabled={generatingAccess === client.id}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-2 transition-colors border border-slate-200"
+                      title="Gerar Login e Senha para este cliente"
+                    >
+                      {generatingAccess === client.id ? <Loader2 size={14} className="animate-spin"/> : <Key size={14} />}
+                      Gerar Acesso
                     </button>
                   </td>
 
@@ -146,14 +169,12 @@ const Clients: React.FC = () => {
                       <button 
                         onClick={() => openModal(client)}
                         className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button 
                         onClick={() => handleDelete(client.id)}
                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Excluir"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -193,7 +214,7 @@ const Clients: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">E-mail (Usado para Login)</label>
             <div className="relative">
               <input 
                 {...register('email', { required: true })}
@@ -203,6 +224,7 @@ const Clients: React.FC = () => {
               />
               <Mail className="absolute left-3 top-2.5 text-slate-400" size={18} />
             </div>
+            <p className="text-xs text-slate-500 mt-1">Este e-mail será o login do cliente.</p>
           </div>
           
           <div className="grid grid-cols-2 gap-4">

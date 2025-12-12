@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X, Shield, Wallet } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings as SettingsIcon, LogOut, Menu, X, Shield, Wallet, UserCircle } from 'lucide-react';
 import { api } from '../services/api';
 
 interface SidebarItemProps {
@@ -26,17 +26,26 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon: Icon, label, active
 
 const Layout: React.FC = () => { 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // Estado para controlar visibilidade
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>(''); // <--- Estado para o Email
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Verifica se o usuário é Admin ao carregar o Layout
   useEffect(() => {
-    api.getProfile().then(profile => {
+    const loadUser = async () => {
+      // 1. Pega o perfil para saber se é admin
+      const profile = await api.getProfile();
       if (profile?.role === 'admin') {
         setIsAdmin(true);
       }
-    });
+      
+      // 2. Pega a sessão para pegar o e-mail real
+      const session = await api.getSession();
+      if (session?.user?.email) {
+        setUserEmail(session.user.email);
+      }
+    };
+    loadUser();
   }, []);
 
   const handleLogout = async () => {
@@ -49,7 +58,6 @@ const Layout: React.FC = () => {
     }
   };
 
-  // Itens padrão
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/bids', label: 'Licitações', icon: FileText },
@@ -58,7 +66,6 @@ const Layout: React.FC = () => {
     { path: '/settings', label: 'Configurações', icon: SettingsIcon },
   ];
 
-  // Se for admin, adiciona o item extra na lista
   if (isAdmin) {
     navItems.push({ path: '/admin', label: 'Gestão de Assessores', icon: Shield });
   }
@@ -97,10 +104,27 @@ const Layout: React.FC = () => {
           ))}
         </nav>
 
+        {/* --- RODAPÉ DA SIDEBAR COM INFO DO USUÁRIO --- */}
         <div className="p-4 border-t border-slate-800">
+          
+          {/* Info do Usuário */}
+          <div className="flex items-center gap-3 px-2 mb-4">
+            <div className="bg-slate-800 p-2 rounded-full text-slate-400">
+              <UserCircle size={24} />
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium text-white truncate">
+                {isAdmin ? 'Administrador' : 'Assessor'}
+              </p>
+              <p className="text-xs text-slate-500 truncate" title={userEmail}>
+                {userEmail || 'Carregando...'}
+              </p>
+            </div>
+          </div>
+
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-medium"
+            className="flex items-center gap-3 px-4 py-3 w-full text-red-400 hover:text-white hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
           >
             <LogOut size={20} />
             <span>Sair</span>

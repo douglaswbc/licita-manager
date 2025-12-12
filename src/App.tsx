@@ -15,6 +15,7 @@ import Clients from './pages/Clients';
 import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
 import Financial from './pages/Financial';
+import ClientPortal from './pages/Portal';
 
 // Componente auxiliar para redirecionar se já estiver logado
 const PublicRoute = ({ children }: { children: JSX.Element }) => {
@@ -50,8 +51,8 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           
-          {/* Portal do Cliente (Público via Token) */}
-          <Route path="/portal/:token" element={<Portal />} />
+          {/* ROTA DO CLIENTE (Sem Layout de Admin) */}
+          <Route path="/portal" element={<ClientPortal />} />
           
           {/* --- ROTAS PROTEGIDAS (ÁREA LOGADA) --- */}
           <Route element={<ProtectedRoute />}>

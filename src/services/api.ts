@@ -33,6 +33,32 @@ export const api = {
   },
 
   // --- CLIENTES ---
+  // Função para criar o login do cliente
+  createClientUser: async (clientId: string, email: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Senha padrão definida
+    const defaultPassword = "mudar@1234"; 
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-client-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
+      body: JSON.stringify({ 
+        clientId, 
+        email, 
+        password: defaultPassword 
+      })
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Erro ao criar acesso');
+    return result;
+  },
+  
+  // --- CLIENTES ---
   getClients: async (): Promise<Client[]> => {
     const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
     if (error) throw error;
@@ -137,21 +163,32 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- PORTAL (CORRIGIDO PARA RPC) ---
-  getPortalData: async (token: string) => {
-    // Chama a função SQL 'get_portal_data'
-    const { data, error } = await supabase.rpc('get_portal_data', { p_token: token });
+  // --- PORTAL (NOVA LÓGICA: Baseada no Usuário Logado) ---
+  getClientPortalData: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Não logado");
 
-    if (error) throw error;
-    if (!data) throw new Error("Link inválido ou expirado.");
+    // 1. Busca os dados do cliente vinculado a este usuário
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('auth_user_id', user.id)
+      .single();
 
-    // Mapeia os dados do banco para o Frontend
+    if (clientError || !clientData) throw new Error("Cadastro de cliente não encontrado.");
+
+    // 2. Busca as licitações desse cliente
+    const { data: bidsData, error: bidsError } = await supabase
+      .from('licitacoes')
+      .select('*')
+      .eq('client_id', clientData.id)
+      .order('data_licitacao', { ascending: false });
+
+    if (bidsError) throw bidsError;
+
     return {
-      client: { 
-        name: data.client.nome, // Banco: nome -> Front: name
-        company: data.client.empresa 
-      },
-      bids: data.bids.map((item: any) => ({
+      client: clientData,
+      bids: bidsData.map((item: any) => ({
         id: item.id,
         title: item.titulo,
         date: item.data_licitacao,
@@ -165,15 +202,21 @@ export const api = {
     };
   },
 
-  saveDecision: async (bidId: string, decision: string, token: string) => {
-    // Chama a função SQL 'save_bid_decision'
-    // Precisamos enviar o token para o banco validar quem está salvando
-    const { error } = await supabase.rpc('save_bid_decision', {
-      p_token: token,
-      p_bid_id: bidId,
-      p_decision: decision
-    });
-    
+  // Salvar decisão (agora usando RLS padrão, pois o usuário está logado!)
+  saveClientDecision: async (bidId: string, decision: string) => {
+    let novoStatus = 'Aguardando Cliente';
+    if (decision === 'Participar') novoStatus = 'Aguardando Licitação';
+    if (decision === 'Descartar') novoStatus = 'Descartada';
+
+    const { error } = await supabase
+      .from('licitacoes')
+      .update({ 
+        decisao_cliente: decision,
+        data_decisao: new Date().toISOString(),
+        status: novoStatus
+      })
+      .eq('id', bidId);
+      
     if (error) throw error;
   },
 

@@ -1,7 +1,7 @@
 export interface Profile {
   id: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'client';
   active: boolean;
   created_at: string;
 }
