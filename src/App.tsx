@@ -14,6 +14,7 @@ import Financial from './pages/Financial';
 import Landing from './pages/Landing';
 import ClientPortal from './pages/Portal';
 import Layout from './components/Layout';
+import Kanban from './pages/Kanban';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
              
              <Route element={<Layout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/kanban" element={<Kanban />} />
                 <Route path="/bids" element={<Bids />} />
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/financial" element={<Financial />} />
