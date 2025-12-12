@@ -32,6 +32,45 @@ export const api = {
     return data.session;
   },
 
+  // Busca todos os perfis E a tabela de vinculo de clientes para montarmos a árvore
+  getDataForAdminUsers: async () => {
+    // 1. Busca perfis
+    const { data: profiles, error: errProfiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (errProfiles) throw errProfiles;
+
+    // 2. Busca relacionamentos
+    let relationships = [];
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        // CORREÇÃO AQUI: mudamos 'company' para 'empresa'
+        .select('id, user_id, auth_user_id, empresa'); 
+      
+      if (!error && data) {
+        relationships = data;
+      } else {
+        console.warn("Aviso: Falha ao carregar vínculos.", error);
+      }
+    } catch (e) {
+      console.warn("Erro silencioso:", e);
+    }
+
+    return { profiles, relationships };
+  },
+
+  // Chama a função cascata do banco
+  toggleAssessorCascade: async (assessorId: string, isActive: boolean) => {
+    const { error } = await supabase.rpc('toggle_assessor_status_cascade', {
+      p_assessor_id: assessorId,
+      p_active: isActive
+    });
+    if (error) throw error;
+  },
+  
   // --- CLIENTES ---
   // Função para criar o login do cliente
   createClientUser: async (clientId: string, email: string) => {
