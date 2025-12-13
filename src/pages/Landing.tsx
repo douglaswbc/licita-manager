@@ -52,7 +52,7 @@ const Landing: React.FC = () => {
       <section className="pt-32 pb-20 px-4 bg-gradient-to-b from-white to-slate-100">
         <div className="max-w-5xl mx-auto text-center">
           <span className="bg-blue-50 text-[#002A54] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6 inline-block border border-blue-100">
-            Novo: Módulo Financeiro & Gestão de Contratos
+            Diga adeus ás planilhas.
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold text-[#002A54] leading-tight mb-6">
             O CRM completo para<br/>
