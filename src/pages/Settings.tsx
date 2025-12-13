@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Save, Loader2, Copy, Check, Server, Lock, Mail, User } from 'lucide-react';
+import { Save, Loader2, Copy, Check, Server, Lock, Mail, User, ExternalLink, HelpCircle, PlayCircle } from 'lucide-react';
 import { api } from '../services/api';
 import { Settings as SettingsType } from '../types';
 import { toast } from 'react-toastify';
@@ -28,7 +28,6 @@ const VariableBadge = ({ text }: { text: string }) => {
 };
 
 const Settings = () => {
-  // CORREÇÃO: Usando os nomes em português no defaultValues
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<SettingsType>({
     defaultValues: {
       email_remetente: '',
@@ -37,9 +36,9 @@ const Settings = () => {
       smtp_user: '',
       smtp_pass: '',
       assunto_lembrete: '',
-      msg_lembrete: '',  
-      assunto_resumo: '', 
-      msg_resumo: ''  
+      msg_lembrete: '',
+      assunto_resumo: '',
+      msg_resumo: ''
     }
   });
   
@@ -49,10 +48,7 @@ const Settings = () => {
     const load = async () => {
       try {
         const data = await api.getSettings();
-        if (data) {
-          // Agora o reset vai funcionar, pois as chaves do 'data' batem com os nomes dos inputs
-          reset(data);
-        }
+        if (data) reset(data);
       } catch (error) {
         console.error("Erro ao carregar settings:", error);
       } finally {
@@ -81,13 +77,52 @@ const Settings = () => {
         
         {/* --- ÁREA DE SMTP --- */}
         <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-slate-200 border-l-4 border-l-[#002A54]">
-          <div className="flex items-center gap-2 mb-4 text-[#002A54]">
+          <div className="flex items-center gap-2 mb-6 text-[#002A54]">
             <Server size={24} />
             <h2 className="text-xl font-bold">Seu Servidor de E-mail (SMTP)</h2>
           </div>
-          <p className="text-sm text-[#666666] mb-6 text-justify bg-blue-50 p-3 rounded border border-blue-100">
-            Configure aqui o e-mail que fará os disparos. Se for Gmail, ative a "Verificação em 2 etapas" e crie uma "Senha de App".
-          </p>
+
+          {/* --- NOVO: CARD DE AJUDA / TUTORIAL --- */}
+          <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 mb-8">
+            <div className="grid md:grid-cols-2 gap-6 items-center">
+              <div>
+                 <h3 className="font-bold text-[#002A54] mb-3 flex items-center gap-2">
+                   <HelpCircle size={20} className="text-blue-600"/> Como configurar o Gmail?
+                 </h3>
+                 <p className="text-sm text-[#666666] mb-4 text-justify leading-relaxed">
+                   O Gmail não aceita sua senha pessoal por segurança. Você precisa ativar a <strong>"Verificação em 2 etapas"</strong> e criar uma <strong>"Senha de App"</strong> (código de 16 letras).
+                 </p>
+                 
+                 <a 
+                   href="https://myaccount.google.com/apppasswords" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   className="inline-flex items-center gap-2 bg-[#002A54] hover:bg-[#001F3F] text-white px-5 py-3 rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg w-full md:w-auto justify-center"
+                 >
+                   <ExternalLink size={18} />
+                   Gerar Senha de App Agora
+                 </a>
+                 <p className="text-[10px] text-slate-500 mt-2 text-center md:text-left">
+                   *Clique para ir direto à página do Google
+                 </p>
+              </div>
+
+              {/* VÍDEO DO YOUTUBE */}
+              <div className="rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-black aspect-video relative group">
+                 <iframe 
+                   width="100%" 
+                   height="100%" 
+                   /* ID DE VÍDEO EXEMPLO*/
+                   src="https://www.youtube.com/embed/cPMFedDaa7Y" 
+                   title="Tutorial Senha de App Gmail" 
+                   frameBorder="0" 
+                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                   allowFullScreen
+                   className="absolute inset-0"
+                 ></iframe>
+              </div>
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
@@ -123,15 +158,16 @@ const Settings = () => {
                 <input type="password" {...register('smtp_pass')} className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" placeholder="••••••••" />
                 <Lock className="absolute right-3 top-2.5 text-slate-400" size={16} />
               </div>
+              <p className="text-xs text-[#009B4D] font-bold mt-1">Cole aqui a senha de 16 caracteres gerada no Google.</p>
             </div>
           </div>
         </div>
 
-        {/* --- MENSAGENS --- */}
+        {/* --- MENSAGENS (MANTIDO IGUAL) --- */}
         <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-slate-200">
           <h2 className="text-xl font-semibold mb-6 text-[#002A54] flex items-center gap-2"><Mail /> Modelos de E-mail</h2>
           
-          {/* Lembrete - CORRIGIDO NOMES */}
+          {/* Lembrete */}
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between mb-2 gap-2">
               <h3 className="font-bold text-[#002A54] text-sm uppercase tracking-wide">Lembrete Automático</h3>
@@ -150,7 +186,7 @@ const Settings = () => {
             />
           </div>
 
-          {/* Resumo - CORRIGIDO NOMES */}
+          {/* Resumo */}
           <div>
             <div className="flex flex-col md:flex-row justify-between mb-2 gap-2">
               <h3 className="font-bold text-[#002A54] text-sm uppercase tracking-wide">Envio de Resumo</h3>

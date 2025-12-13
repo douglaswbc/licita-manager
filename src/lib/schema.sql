@@ -1,211 +1,204 @@
 -- ==============================================================================
--- 1. CONFIGURAÇÕES INICIAIS E EXTENSÕES
+-- 1. LIMPEZA E CONFIGURAÇÃO INICIAL (Opcional, remove tabelas antigas se existirem)
 -- ==============================================================================
+-- DROP TABLE IF EXISTS public.licitacoes;
+-- DROP TABLE IF EXISTS public.settings;
+-- DROP TABLE IF EXISTS public.clients;
+-- DROP TABLE IF EXISTS public.profiles;
+
+-- Habilita extensão para gerar UUIDs
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==============================================================================
--- 2. GARANTIA DA ESTRUTURA DAS TABELAS
+-- 2. TABELAS
 -- ==============================================================================
 
--- Tabela: PROFILES
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  email text,
-  role text DEFAULT 'user', -- 'admin', 'user' (assessor), 'client'
-  active boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
-);
-
--- Tabela: CLIENTS
-CREATE TABLE IF NOT EXISTS public.clients (
-  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id uuid REFERENCES public.profiles(id), -- O Assessor dono deste cliente
-  auth_user_id uuid REFERENCES auth.users(id), -- O Login do Portal deste cliente
-  nome text NOT NULL,
+-- Tabela de Perfis (Vinculada ao Auth do Supabase)
+CREATE TABLE public.profiles (
+  id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   email text NOT NULL,
-  empresa text,
-  contract_value numeric DEFAULT 0,
-  commission_rate numeric DEFAULT 0,
-  active boolean DEFAULT true,
-  access_token uuid DEFAULT uuid_generate_v4(), -- Para link mágico (legado)
-  created_at timestamptz DEFAULT now()
+  role text DEFAULT 'user'::text, -- 'admin', 'user' (assessor), 'client'
+  active boolean DEFAULT false,   -- MODELO SAAS: Nasce bloqueado até pagar
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (id)
 );
 
--- Tabela: LICITACOES
-CREATE TABLE IF NOT EXISTS public.licitacoes (
-  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id uuid REFERENCES public.profiles(id), -- O Assessor
-  client_id uuid REFERENCES public.clients(id) ON DELETE CASCADE,
-  titulo text NOT NULL,
-  data_licitacao date NOT NULL,
-  link_docs text,
-  status text DEFAULT 'Pendente',
-  decisao_cliente text DEFAULT 'Pendente',
-  data_decisao timestamptz,
-  final_value numeric DEFAULT 0,
-  commission_rate numeric DEFAULT 0,
-  financial_status text DEFAULT 'aguardando_nota',
-  lembrete_enviado boolean DEFAULT false,
-  lembrete_enviado_em timestamptz,
-  link_resumo text,
-  resumo_enviado_em timestamptz,
-  created_at timestamptz DEFAULT now()
-);
-
--- Tabela: SETTINGS
-CREATE TABLE IF NOT EXISTS public.settings (
-  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- Tabela de Configurações (SMTP e Modelos de Email)
+CREATE TABLE public.settings (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
-  email_remetente text,
+  email_remetente text, -- Nome que aparece no e-mail (Ex: Águia Consultoria)
   smtp_host text,
-  smtp_port int,
+  smtp_port integer,
   smtp_user text,
   smtp_pass text,
   assunto_lembrete text DEFAULT 'Lembrete de Licitação',
   msg_lembrete text DEFAULT 'Olá {{CLIENTE}}, faltam 2 dias para a licitação {{LICITACAO}}.',
   assunto_resumo text DEFAULT 'Resumo da Licitação',
-  msg_resumo text DEFAULT 'Segue o resumo: {{LINK}}',
-  created_at timestamptz DEFAULT now()
+  msg_resumo text DEFAULT 'Segue o resumo da licitação: {{LINK}}',
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (id),
+  CONSTRAINT settings_user_id_key UNIQUE (user_id) -- Garante 1 config por usuário
+);
+
+-- Tabela de Clientes (Empresas que o Assessor atende)
+CREATE TABLE public.clients (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE, -- Dono do cliente (Assessor)
+  auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- Login do Portal do Cliente
+  nome text NOT NULL,
+  email text NOT NULL,
+  empresa text,
+  contract_value numeric(10,2) DEFAULT 0,
+  commission_rate numeric(5,2) DEFAULT 0,
+  active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (id)
+);
+
+-- Tabela de Licitações (Oportunidades)
+CREATE TABLE public.licitacoes (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE, -- Assessor responsável
+  client_id uuid REFERENCES public.clients(id) ON DELETE CASCADE,
+  titulo text NOT NULL,
+  data_licitacao timestamp with time zone,
+  link_docs text,
+  attachments jsonb DEFAULT '[]'::jsonb, -- LISTA DE ARQUIVOS (PDFs)
+  status text DEFAULT 'Pendente', -- Pendente, Aguardando Cliente, Ganha, Perdida...
+  
+  -- Campos de Automação
+  lembrete_enviado boolean DEFAULT false,
+  link_resumo text,
+  resumo_enviado_em timestamp with time zone,
+  
+  -- Portal do Cliente
+  decisao_cliente text, -- 'Participar', 'Descartar'
+  data_decisao timestamp with time zone,
+  
+  -- Financeiro
+  final_value numeric(15,2),
+  commission_rate numeric(5,2),
+  financial_status text DEFAULT 'aguardando_nota', -- 'aguardando_nota', 'pendente', 'pago'
+  
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  PRIMARY KEY (id)
 );
 
 -- ==============================================================================
--- 3. FUNÇÕES DE SEGURANÇA (SECURITY DEFINER)
+-- 3. TRIGGERS E FUNÇÕES (Automação de Banco)
 -- ==============================================================================
 
--- Função vital para evitar Loop Infinito nas políticas
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean 
-LANGUAGE plpgsql 
-SECURITY DEFINER 
-SET search_path = public
-AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
-  );
-END;
-$$;
-
--- Trigger para criar perfil automaticamente ao cadastrar no Auth
+-- Função: Cria Profile automaticamente ao registrar no Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, role)
-  VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'role', 'user'));
-  RETURN new;
+  INSERT INTO public.profiles (id, email, role, active)
+  VALUES (
+    new.id, 
+    new.email, 
+    COALESCE(new.raw_user_meta_data->>'role', 'user'),
+    false -- IMPORTANTE: Nasce inativo (Flow de Pagamento)
+  );
+  return new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Remove trigger antigo se existir e recria
+-- Trigger: Dispara a função acima
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- ==============================================================================
--- 4. POLÍTICAS DE SEGURANÇA (RLS) - LIMPEZA E RECRIAÇÃO
--- ==============================================================================
-
--- Habilita RLS
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.licitacoes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-
--- --- TABELA PROFILES ---
-DROP POLICY IF EXISTS "Profiles: Leitura Geral" ON public.profiles;
-DROP POLICY IF EXISTS "Profiles: Atualizacao" ON public.profiles;
-DROP POLICY IF EXISTS "Profiles: Insercao" ON public.profiles;
-
--- Quem pode ver perfis?
--- 1. Admin vê tudo.
--- 2. Usuário vê a si mesmo.
--- 3. Assessor vê os perfis dos seus clientes (para listar na árvore).
-CREATE POLICY "Profiles: Leitura Geral" ON public.profiles
-FOR SELECT USING (
-  is_admin() 
-  OR id = auth.uid()
-  OR id IN (SELECT auth_user_id FROM public.clients WHERE user_id = auth.uid())
-);
-
--- Quem pode atualizar?
--- Admin (para bloquear) ou o próprio dono.
-CREATE POLICY "Profiles: Atualizacao" ON public.profiles
-FOR UPDATE USING ( is_admin() OR id = auth.uid() );
-
--- Quem pode inserir? (Trigger do sistema)
-CREATE POLICY "Profiles: Insercao" ON public.profiles
-FOR INSERT WITH CHECK (true);
-
-
--- --- TABELA CLIENTS ---
-DROP POLICY IF EXISTS "Clients: Admin Total" ON public.clients;
-DROP POLICY IF EXISTS "Clients: Assessor Total" ON public.clients;
-DROP POLICY IF EXISTS "Clients: Portal Leitura" ON public.clients;
-
--- Admin faz tudo
-CREATE POLICY "Clients: Admin Total" ON public.clients FOR ALL USING ( is_admin() );
-
--- Assessor vê e edita APENAS os clientes criados por ele
-CREATE POLICY "Clients: Assessor Total" ON public.clients FOR ALL USING ( user_id = auth.uid() );
-
--- Cliente do Portal VÊ apenas o seu próprio cadastro
-CREATE POLICY "Clients: Portal Leitura" ON public.clients FOR SELECT USING ( auth_user_id = auth.uid() );
-
-
--- --- TABELA LICITACOES ---
-DROP POLICY IF EXISTS "Bids: Admin Total" ON public.licitacoes;
-DROP POLICY IF EXISTS "Bids: Assessor Total" ON public.licitacoes;
-DROP POLICY IF EXISTS "Bids: Portal Leitura" ON public.licitacoes;
-DROP POLICY IF EXISTS "Bids: Portal Decisao" ON public.licitacoes;
-
--- Admin faz tudo
-CREATE POLICY "Bids: Admin Total" ON public.licitacoes FOR ALL USING ( is_admin() );
-
--- Assessor vê e edita suas licitações
-CREATE POLICY "Bids: Assessor Total" ON public.licitacoes FOR ALL USING ( user_id = auth.uid() );
-
--- Cliente do Portal VÊ licitações vinculadas a ele
-CREATE POLICY "Bids: Portal Leitura" ON public.licitacoes FOR SELECT USING (
-  client_id IN (SELECT id FROM public.clients WHERE auth_user_id = auth.uid())
-);
-
--- Cliente do Portal ATUALIZA (decisão) nas licitações dele
-CREATE POLICY "Bids: Portal Decisao" ON public.licitacoes FOR UPDATE USING (
-  client_id IN (SELECT id FROM public.clients WHERE auth_user_id = auth.uid())
-);
-
-
--- --- TABELA SETTINGS ---
-DROP POLICY IF EXISTS "Settings: Dono" ON public.settings;
-
-CREATE POLICY "Settings: Dono" ON public.settings
-FOR ALL USING ( user_id = auth.uid() );
-
--- ==============================================================================
--- 5. FUNÇÃO PARA BLOQUEIO EM CASCATA (Assessor -> Clientes)
--- ==============================================================================
+-- Função Admin: Bloqueio em Cascata (Assessor -> Clientes)
 CREATE OR REPLACE FUNCTION toggle_assessor_status_cascade(p_assessor_id uuid, p_active boolean)
 RETURNS void AS $$
 BEGIN
-  -- Atualiza Assessor
+  -- 1. Atualiza o status do Assessor
   UPDATE public.profiles SET active = p_active WHERE id = p_assessor_id;
-  -- Atualiza Clientes dele
-  UPDATE public.profiles
-  SET active = p_active
+  
+  -- 2. Atualiza o status de todos os Clientes vinculados a ele na tabela 'clients'
+  UPDATE public.clients SET active = p_active WHERE user_id = p_assessor_id;
+  
+  -- 3. Se os clientes tiverem login de portal (auth_user_id), bloqueia/libera o profile deles também
+  UPDATE public.profiles 
+  SET active = p_active 
   WHERE id IN (SELECT auth_user_id FROM public.clients WHERE user_id = p_assessor_id AND auth_user_id IS NOT NULL);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==============================================================================
--- 6. PERMISSÕES FINAIS E ADMIN
+-- 4. ROW LEVEL SECURITY (RLS) - Segurança
 -- ==============================================================================
 
--- Força atualização do cache da API para garantir que colunas novas apareçam
-NOTIFY pgrst, 'reload schema';
+-- Habilitar RLS em todas as tabelas
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.licitacoes ENABLE ROW LEVEL SECURITY;
 
--- Define o Admin Supremo
+-- POLÍTICAS: PROFILES
+CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+-- POLÍTICAS: SETTINGS
+CREATE POLICY "Users manage own settings" ON settings FOR ALL USING (auth.uid() = user_id);
+
+-- POLÍTICAS: CLIENTS
+-- Assessor vê seus clientes
+CREATE POLICY "Assessors manage own clients" ON clients FOR ALL USING (auth.uid() = user_id);
+-- Cliente (Portal) vê seu próprio registro
+CREATE POLICY "Clients read own data" ON clients FOR SELECT USING (auth.uid() = auth_user_id);
+
+-- POLÍTICAS: LICITACOES
+-- Assessor vê/edita tudo que criou
+CREATE POLICY "Assessors manage own bids" ON licitacoes FOR ALL USING (auth.uid() = user_id);
+
+-- Cliente (Portal) VÊ as licitações vinculadas a ele
+CREATE POLICY "Portal clients view own bids" ON licitacoes FOR SELECT USING (
+  client_id IN (SELECT id FROM public.clients WHERE auth_user_id = auth.uid())
+);
+
+-- Cliente (Portal) ATUALIZA apenas a decisão
+CREATE POLICY "Portal clients update decision" ON licitacoes FOR UPDATE USING (
+  client_id IN (SELECT id FROM public.clients WHERE auth_user_id = auth.uid())
+) WITH CHECK (
+  client_id IN (SELECT id FROM public.clients WHERE auth_user_id = auth.uid())
+);
+
+-- ADMIN (Política Global Opcional - Admin vê tudo)
+-- (Geralmente admin usa Supabase Dashboard, mas se tiver painel admin no app, adicione policies checando role='admin')
+
+-- ==============================================================================
+-- 5. STORAGE (Arquivos PDF)
+-- ==============================================================================
+
+-- Criação do Bucket (Se der erro de já existente, ignore)
+INSERT INTO storage.buckets (id, name, public) VALUES ('bids', 'bids', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Política: Qualquer um pode baixar (Para o cliente baixar sem logar se receber por email)
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING ( bucket_id = 'bids' );
+
+-- Política: Apenas usuários logados (Assessores) fazem upload
+CREATE POLICY "Auth Uploads" ON storage.objects FOR INSERT 
+WITH CHECK ( bucket_id = 'bids' AND auth.role() = 'authenticated' );
+
+-- Política: Apenas usuários logados deletam
+CREATE POLICY "Auth Delete" ON storage.objects FOR DELETE 
+USING ( bucket_id = 'bids' AND auth.role() = 'authenticated' );
+
+-- ==============================================================================
+-- 6. DADOS INICIAIS (Seed do seu Usuário Admin)
+-- ==============================================================================
+
+-- Atualiza seu usuário principal para ser ADMIN e ATIVO
+-- Substitua pelo seu email real se necessário
 UPDATE public.profiles 
 SET role = 'admin', active = true 
-WHERE email = 'licitamanager@gmail.com';
+WHERE email = 'licitamanager@gmail.com'; 
+-- (Ou qualquer email que você usou para criar a conta inicial)
