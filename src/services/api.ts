@@ -47,7 +47,6 @@ export const api = {
     try {
       const { data, error } = await supabase
         .from('clients')
-        // CORREÇÃO AQUI: mudamos 'company' para 'empresa'
         .select('id, user_id, auth_user_id, empresa'); 
       
       if (!error && data) {
@@ -83,12 +82,48 @@ export const api = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session?.access_token}` // Envia token para segurança
       },
-      body: JSON.stringify({ bidId, summaryLink: link })
+      // Agora enviamos apenas o ID, a Edge Function busca os anexos no banco
+      body: JSON.stringify({ bidId }) 
     });
 
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Erro ao enviar e-mail.');
     return result;
+  },
+  
+  uploadFile: async (file: File) => {
+    // 1. Limpa o nome do arquivo (Remove acentos, espaços e caracteres especiais)
+    const cleanName = file.name
+      .normalize('NFD') // Separa os acentos das letras
+      .replace(/[\u0300-\u036f]/g, "") // Remove os acentos
+      .replace(/[^a-zA-Z0-9.-]/g, "_"); // Substitui qualquer coisa que não seja letra/número/ponto/traço por _
+
+    // 2. Cria nome único com Timestamp
+    const fileName = `${Date.now()}-${cleanName}`;
+    
+    // 3. Upload
+    const { data, error } = await supabase.storage
+      .from('bids')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error("Erro Supabase Storage:", error);
+      throw error;
+    }
+
+    // 4. Pega URL Pública
+    const { data: { publicUrl } } = supabase.storage
+      .from('bids')
+      .getPublicUrl(fileName);
+
+    return {
+      name: file.name, // Mantemos o nome original para exibição
+      url: publicUrl,
+      path: data.path
+    };
   },
   
   // --- CLIENTES ---
@@ -174,6 +209,7 @@ export const api = {
       title: item.titulo,
       date: item.data_licitacao,
       link_docs: item.link_docs,
+      attachments: item.attachments || [], // <--- CORREÇÃO CRUCIAL: Mapeia o JSON do banco para o Frontend
       status: item.status,
       client_id: item.client_id,
       client_name: item.clients?.nome,
@@ -195,6 +231,7 @@ export const api = {
       titulo: bid.title,
       data_licitacao: bid.date,
       link_docs: bid.link_docs,
+      attachments: bid.attachments, // <--- CORREÇÃO CRUCIAL: Salva o array de arquivos no banco
       status: bid.status,
       client_id: bid.client_id,
       lembrete_enviado: bid.reminder_sent || false,
@@ -222,7 +259,7 @@ export const api = {
     if (error) throw error;
   },
 
-  // --- PORTAL (NOVA LÓGICA: Baseada no Usuário Logado) ---
+  // --- PORTAL DO CLIENTE ---
   getClientPortalData: async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Não logado");
@@ -252,6 +289,7 @@ export const api = {
         title: item.titulo,
         date: item.data_licitacao,
         link_docs: item.link_docs,
+        attachments: item.attachments || [], // <--- Também exibe os arquivos no portal
         status: item.status,
         decision: item.decisao_cliente || 'Pendente',
         decision_at: item.data_decisao,
@@ -280,46 +318,76 @@ export const api = {
   },
 
   // --- SETTINGS ---
-  getSettings: async (): Promise<Settings | null> => {
-    const { data, error } = await supabase.from('settings').select('*').single();
-    if (error && error.code !== 'PGRST116') return null;
-    if (!data) return null;
+  getSettings: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
     
+    // Se não encontrou linha (PGRST116), retorna objeto vazio para o form iniciar zerado
+    if (error) {
+      if (error.code === 'PGRST116') return {}; 
+      console.error(error);
+      return null;
+    }
+    
+    // Converte qualquer valor NULL do banco em STRING VAZIA para o React não bugar
     return {
-      email_sender: data.email_remetente,
-      reminder_subject: data.assunto_lembrete,
-      reminder_body: data.msg_lembrete,
-      summary_subject: data.assunto_resumo,
-      summary_body: data.msg_resumo,
-      smtp_host: data.smtp_host,
-      smtp_port: data.smtp_port,
-      smtp_user: data.smtp_user,
-      smtp_pass: data.smtp_pass
-    };
+      id: data.id,
+      user_id: data.user_id,
+      email_remetente: data.email_remetente || '', 
+      smtp_host: data.smtp_host || '',
+      smtp_port: data.smtp_port || 587,
+      smtp_user: data.smtp_user || '',
+      smtp_pass: data.smtp_pass || '',
+      assunto_lembrete: data.assunto_lembrete || 'Lembrete de Licitação',
+      msg_lembrete: data.msg_lembrete || 'Olá {{CLIENTE}}, faltam 2 dias para a licitação {{LICITACAO}}.',
+      assunto_resumo: data.assunto_resumo || 'Resumo da Licitação',
+      msg_resumo: data.msg_resumo || 'Segue o resumo: {{LINK}}',
+    }; 
   },
 
   saveSettings: async (settings: Settings) => {
-    const { user } = (await supabase.auth.getUser()).data;
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuário não logado");
 
-    const { data: existing } = await supabase.from('settings').select('id').eq('user_id', user.id).maybeSingle();
-
     const payload = {
-      id: existing?.id, 
       user_id: user.id,
-      email_remetente: settings.email_sender,
-      assunto_lembrete: settings.reminder_subject,
-      msg_lembrete: settings.reminder_body,
-      assunto_resumo: settings.summary_subject,
-      msg_resumo: settings.summary_body,
+      email_remetente: settings.email_remetente,
       smtp_host: settings.smtp_host,
       smtp_port: settings.smtp_port,
       smtp_user: settings.smtp_user,
-      smtp_pass: settings.smtp_pass
+      smtp_pass: settings.smtp_pass,
+      assunto_lembrete: settings.assunto_lembrete,
+      msg_lembrete: settings.msg_lembrete,
+      assunto_resumo: settings.assunto_resumo,
+      msg_resumo: settings.msg_resumo,
+      updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('settings').upsert(payload);
-    if (error) throw error;
+    // Verifica se já existe config para esse user
+    const { data: existing } = await supabase.from('settings').select('id').eq('user_id', user.id).single();
+
+    if (existing) {
+        // Update
+        const { error } = await supabase
+            .from('settings')
+            .update(payload)
+            .eq('id', existing.id);
+        if (error) throw error;
+    } else {
+        // Insert
+        const { error } = await supabase
+            .from('settings')
+            .insert([payload]);
+        if (error) throw error;
+    }
+
+    return true;
   },
 
   // --- ADMIN ---

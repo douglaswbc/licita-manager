@@ -47,15 +47,17 @@ export interface Bid {
 }
 
 export interface Settings {
-  email_sender: string;
-  reminder_subject: string;
-  reminder_body: string;
-  summary_subject: string;
-  summary_body: string;
+  id?: string;
+  user_id?: string;
+  email_remetente?: string;
   smtp_host?: string;
   smtp_port?: number;
   smtp_user?: string;
   smtp_pass?: string;
+  assunto_lembrete?: string;
+  msg_lembrete?: string;
+  assunto_resumo?: string;
+  msg_resumo?: string;
 }
 
 export interface User {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Save, Loader2, Copy, Check, Server, Lock, Mail } from 'lucide-react';
+import { Save, Loader2, Copy, Check, Server, Lock, Mail, User } from 'lucide-react';
 import { api } from '../services/api';
 import { Settings as SettingsType } from '../types';
 import { toast } from 'react-toastify';
@@ -28,14 +28,38 @@ const VariableBadge = ({ text }: { text: string }) => {
 };
 
 const Settings = () => {
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<SettingsType>();
+  // CORREÇÃO: Usando os nomes em português no defaultValues
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<SettingsType>({
+    defaultValues: {
+      email_remetente: '',
+      smtp_host: '',
+      smtp_port: 587,
+      smtp_user: '',
+      smtp_pass: '',
+      assunto_lembrete: '',
+      msg_lembrete: '',  
+      assunto_resumo: '', 
+      msg_resumo: ''  
+    }
+  });
+  
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getSettings().then((data) => {
-      if (data) reset(data);
-      setLoading(false);
-    });
+    const load = async () => {
+      try {
+        const data = await api.getSettings();
+        if (data) {
+          // Agora o reset vai funcionar, pois as chaves do 'data' batem com os nomes dos inputs
+          reset(data);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [reset]);
 
   const onSubmit = async (data: SettingsType) => {
@@ -43,6 +67,7 @@ const Settings = () => {
       await api.saveSettings(data);
       toast.success('Configurações salvas com sucesso!');
     } catch (error) {
+      console.error(error);
       toast.error('Erro ao salvar configurações.');
     }
   };
@@ -60,11 +85,26 @@ const Settings = () => {
             <Server size={24} />
             <h2 className="text-xl font-bold">Seu Servidor de E-mail (SMTP)</h2>
           </div>
-          <p className="text-sm text-[#666666] mb-4 text-justify bg-blue-50 p-3 rounded border border-blue-100">
+          <p className="text-sm text-[#666666] mb-6 text-justify bg-blue-50 p-3 rounded border border-blue-100">
             Configure aqui o e-mail que fará os disparos. Se for Gmail, ative a "Verificação em 2 etapas" e crie uma "Senha de App".
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* NOME DO REMETENTE */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-bold text-[#002A54] mb-1">Nome do Remetente (Como o cliente vê)</label>
+              <div className="relative">
+                <input 
+                  {...register('email_remetente')} 
+                  className="w-full pl-10 px-3 py-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" 
+                  placeholder="Ex: Águia Licitações & Consultoria" 
+                />
+                <User className="absolute left-3 top-2.5 text-slate-400" size={18} />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Este nome aparecerá no "De:" do e-mail recebido pelo cliente.</p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-[#666666] mb-1">Host SMTP</label>
               <input {...register('smtp_host')} className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" placeholder="smtp.gmail.com" />
@@ -91,24 +131,42 @@ const Settings = () => {
         <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-slate-200">
           <h2 className="text-xl font-semibold mb-6 text-[#002A54] flex items-center gap-2"><Mail /> Modelos de E-mail</h2>
           
-          {/* Lembrete */}
+          {/* Lembrete - CORRIGIDO NOMES */}
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between mb-2 gap-2">
               <h3 className="font-bold text-[#002A54] text-sm uppercase tracking-wide">Lembrete Automático</h3>
               <div className="flex gap-2 flex-wrap"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LICITACAO}}" /></div>
             </div>
-            <input {...register('reminder_subject')} className="w-full p-2 border border-slate-300 rounded mb-2 text-sm focus:ring-2 focus:ring-[#002A54] outline-none" placeholder="Assunto do E-mail" />
-            <textarea {...register('reminder_body')} rows={4} className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" placeholder="Corpo da mensagem..." />
+            <input 
+              {...register('assunto_lembrete')} 
+              className="w-full p-2 border border-slate-300 rounded mb-2 text-sm focus:ring-2 focus:ring-[#002A54] outline-none" 
+              placeholder="Assunto do E-mail" 
+            />
+            <textarea 
+              {...register('msg_lembrete')} 
+              rows={4} 
+              className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" 
+              placeholder="Corpo da mensagem..." 
+            />
           </div>
 
-          {/* Resumo */}
+          {/* Resumo - CORRIGIDO NOMES */}
           <div>
             <div className="flex flex-col md:flex-row justify-between mb-2 gap-2">
               <h3 className="font-bold text-[#002A54] text-sm uppercase tracking-wide">Envio de Resumo</h3>
-              <div className="flex gap-2 flex-wrap"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LINK}}" /></div>
+              <div className="flex gap-2 flex-wrap"><VariableBadge text="{{CLIENTE}}" /><VariableBadge text="{{LINK}}" /><VariableBadge text="{{ASSESSOR}}" /></div>
             </div>
-            <input {...register('summary_subject')} className="w-full p-2 border border-slate-300 rounded mb-2 text-sm focus:ring-2 focus:ring-[#002A54] outline-none" placeholder="Assunto do E-mail" />
-            <textarea {...register('summary_body')} rows={4} className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" placeholder="Corpo da mensagem..." />
+            <input 
+              {...register('assunto_resumo')} 
+              className="w-full p-2 border border-slate-300 rounded mb-2 text-sm focus:ring-2 focus:ring-[#002A54] outline-none" 
+              placeholder="Assunto do E-mail" 
+            />
+            <textarea 
+              {...register('msg_resumo')} 
+              rows={4} 
+              className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#002A54] outline-none" 
+              placeholder="Corpo da mensagem..." 
+            />
           </div>
         </div>
 
