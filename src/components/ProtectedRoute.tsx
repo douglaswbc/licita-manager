@@ -13,8 +13,8 @@ export const ProtectedRoute = () => {
   const navigate = useNavigate();
 
   // COLOQUE SEUS LINKS DA KIWIFI AQUI
-  const LINK_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/SEU_LINK_MENSAL";
-  const LINK_CHECKOUT_ANUAL = "https://pay.kiwify.com.br/SEU_LINK_ANUAL";
+  const LINK_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/ASJJYSg";
+  const LINK_CHECKOUT_ANUAL = "https://pay.kiwify.com.br/LRJyvBa";
 
   useEffect(() => {
     const checkStatus = async () => {
